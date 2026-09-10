@@ -1,11 +1,10 @@
-import { useState, useEffect, useMemo } from 'react';
-import { api } from './api';
-import { translations } from './i18n';
-import Header from './components/Header';
-import AccountTabs from './components/AccountTabs';
+import { useState, useEffect, useMemo } from "react";
+import { api } from "./api";
+import { translations } from "./i18n";
+import AccountTabs from "./components/AccountTabs";
 
 export default function App() {
-  const [lang, setLang] = useState('en');
+  const [lang, setLang] = useState("en");
   const t = translations[lang];
 
   const [accounts, setAccounts] = useState([]);
@@ -19,19 +18,17 @@ export default function App() {
     Promise.all([loadAccounts(), loadTransactions()])
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-
-    // Trigger sync once on page load — backend enforces 4h cooldown
-    triggerSync();
+    // triggerSync(); — removed, user triggers manually
   }, []);
 
   const loadAccounts = async () => {
     const res = await api.getAccounts();
-    if (res.status === 'success') setAccounts(res.data);
+    if (res.status === "success") setAccounts(res.data);
   };
 
   const loadTransactions = async () => {
     const res = await api.getTransactions();
-    if (res.status === 'success') setTransactions(res.data);
+    if (res.status === "success") setTransactions(res.data);
   };
 
   const triggerSync = async () => {
@@ -39,18 +36,17 @@ export default function App() {
     try {
       const res = await api.syncActivities();
       setSyncStatus(res);
-      if (res.status === 'success') {
-        // Reload after successful sync
-        await loadTransactions();
+      if (res.status === "success") {
+        // Reload both so last_successful_sync in account tabs also refreshes
+        await Promise.all([loadAccounts(), loadTransactions()]);
       }
     } catch (e) {
-      setSyncStatus({ status: 'fail', error: e.message });
+      setSyncStatus({ status: "fail", error: e.message });
     } finally {
       setSyncing(false);
     }
   };
 
-  // Group: nickname -> symbol -> rows[] sorted by trade_date ascending
   const grouped = useMemo(() => {
     const g = {};
     for (const row of transactions) {
@@ -69,31 +65,28 @@ export default function App() {
     return g;
   }, [transactions]);
 
-  // Only open accounts with a nickname
   const activeAccounts = useMemo(
-    () => accounts.filter((a) => a.nickname && a.status === 'open'),
-    [accounts]
+    () => accounts.filter((a) => a.nickname && a.status === "open"),
+    [accounts],
   );
 
   return (
     <div className="app">
-      <Header
-        t={t}
-        lang={lang}
-        setLang={setLang}
-        syncStatus={syncStatus}
-        syncing={syncing}
-        onSync={triggerSync}
-      />
-      <main className="main">
-        {loading ? (
-          <div className="status-msg">{t.loading}</div>
-        ) : error ? (
-          <div className="status-msg error">{error}</div>
-        ) : (
-          <AccountTabs t={t} accounts={activeAccounts} grouped={grouped} />
-        )}
-      </main>
+      {loading ?
+        <div className="status-msg">{t.loading}</div>
+      : error ?
+        <div className="status-msg error">{error}</div>
+      : <AccountTabs
+          t={t}
+          accounts={activeAccounts}
+          grouped={grouped}
+          lang={lang}
+          setLang={setLang}
+          syncStatus={syncStatus}
+          syncing={syncing}
+          onSync={triggerSync}
+        />
+      }
     </div>
   );
 }

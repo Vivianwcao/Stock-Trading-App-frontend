@@ -1,6 +1,6 @@
 export const translations = {
   en: {
-    title: 'Portfolio Tracker',
+    title: 'Stock Tracker',
     syncActivities: 'Sync Activities',
     syncing: 'Syncing…',
     syncSuccess: 'Activities synced',
@@ -41,6 +41,10 @@ export const translations = {
     projectedPL: 'Projected P&L',
     projectedReturn: 'Projected return',
     hypothetical: 'Hypothetical',
+    lastSync: 'Last sync',
+    replace: 'Replace',
+    tradingBalance: 'Trade Balance',
+    calculate: 'Calculate',
   },
   zh: {
     title: '股票追踪',
@@ -81,5 +85,9 @@ export const translations = {
     projectedPL: '预计盈亏',
     projectedReturn: '预计回报率',
     hypothetical: '假设',
+    lastSync: '最后同步',
+    replace: '替换',
+    tradingBalance: '交易余额',
+    calculate: '计算',
   },
 };

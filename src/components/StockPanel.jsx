@@ -1,37 +1,40 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { api } from '../api';
 import TransactionTable from './TransactionTable';
 import Calculator from './Calculator';
 
+// Find the most recent BUY or SELL date for a symbol's rows (already sorted asc)
+function getLatestTradeDate(rows) {
+  for (let i = rows.length - 1; i >= 0; i--) {
+    if (rows[i].type === 'BUY' || rows[i].type === 'SELL') {
+      return rows[i].trade_date;
+    }
+  }
+  return null; // dividend-only or no real trades
+}
+
 export default function StockPanel({ t, nickname, accountId, symbols }) {
-  const symbolList = Object.keys(symbols).sort();
+  // Sort symbols by most recent BUY/SELL date descending; ties sorted alphabetically
+  const symbolList = useMemo(() => {
+    return Object.keys(symbols).sort((a, b) => {
+      const da = getLatestTradeDate(symbols[a]);
+      const db = getLatestTradeDate(symbols[b]);
+      if (!da && !db) return a.localeCompare(b);
+      if (!da) return 1;
+      if (!db) return -1;
+      return db.localeCompare(da); // descending date (ISO strings sort correctly)
+    });
+  }, [symbols]);
+
   const [activeSym, setActiveSym] = useState(() => symbolList[0] || null);
   const [orderStatus, setOrderStatus] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
-  // Hypothetical rows per symbol, persisted in sessionStorage
-  const [hypotheticals, setHypotheticals] = useState(() => {
-    try {
-      return JSON.parse(sessionStorage.getItem(`hyp_${nickname}`) || '{}');
-    } catch {
-      return {};
-    }
-  });
 
-  const saveHypotheticals = (next) => {
-    setHypotheticals(next);
-    try {
-      sessionStorage.setItem(`hyp_${nickname}`, JSON.stringify(next));
-    } catch {}
-  };
+  // Single hypothetical row per symbol: { [sym]: row | null }
+  const [hypotheticals, setHypotheticals] = useState({});
 
-  const addHypothetical = (sym, row) => {
-    const next = { ...hypotheticals, [sym]: [...(hypotheticals[sym] || []), row] };
-    saveHypotheticals(next);
-  };
-
-  const clearHypotheticals = (sym) => {
-    const next = { ...hypotheticals, [sym]: [] };
-    saveHypotheticals(next);
+  const setHypothetical = (sym, row) => {
+    setHypotheticals((prev) => ({ ...prev, [sym]: row }));
   };
 
   const refreshOrders = async () => {
@@ -47,78 +50,62 @@ export default function StockPanel({ t, nickname, accountId, symbols }) {
     }
   };
 
-  const renderOrderStatus = () => {
-    if (refreshing) return <span className="sync-msg syncing">{t.refreshing}</span>;
-    if (!orderStatus) return null;
-    if (orderStatus.status === 'success')
-      return <span className="sync-msg ok">{t.ordersSuccess}</span>;
-    if (orderStatus.status === 'cooldown') {
-      const { seconds: s = 0 } = orderStatus.data || {};
-      return <span className="sync-msg cooldown">{t.ordersCooldown(s)}</span>;
-    }
-    if (orderStatus.status === 'fail')
-      return <span className="sync-msg fail">{orderStatus.error}</span>;
-    return null;
-  };
-
   if (!symbolList.length) return <div className="status-msg">{t.noSymbols}</div>;
 
-  // When switching accounts the active symbol may not exist in the new account
+  // Guard: active symbol may not exist after account switch (remount handles it, but be safe)
   const currentSym = symbolList.includes(activeSym) ? activeSym : symbolList[0];
   const rows = symbols[currentSym] || [];
   const lastRow = rows[rows.length - 1]; // most recent real row
+  const currentHyp = hypotheticals[currentSym] ?? null;
+
+  const symbolTabs = symbolList.map((sym) => {
+    const symRows = symbols[sym];
+    const last = symRows[symRows.length - 1];
+    const isHeld = last && last.rolling_units > 0;
+    return (
+      <button
+        key={sym}
+        className={`stock-tab ${sym === currentSym ? 'active' : ''} ${!isHeld ? 'closed' : ''}`}
+        onClick={() => setActiveSym(sym)}
+      >
+        {sym}
+        {isHeld && (
+          <span className="units-badge">{last.rolling_units}</span>
+        )}
+      </button>
+    );
+  });
 
   return (
     <div className="stock-panel">
-      {/* Toolbar: symbol tabs + refresh orders button */}
-      <div className="stock-toolbar">
-        <div className="stock-tabs">
-          {symbolList.map((sym) => {
-            const symRows = symbols[sym];
-            const last = symRows[symRows.length - 1];
-            const isHeld = last && last.rolling_units > 0;
-            return (
-              <button
-                key={sym}
-                className={`stock-tab ${sym === currentSym ? 'active' : ''} ${!isHeld ? 'closed' : ''}`}
-                onClick={() => setActiveSym(sym)}
-              >
-                {sym}
-                {isHeld && (
-                  <span className="units-badge">{last.rolling_units}</span>
-                )}
-              </button>
-            );
-          })}
+      <div className="content-columns">
+        {/* Left: transaction table fills available height */}
+        <div className="col-left">
+          <TransactionTable
+            t={t}
+            rows={rows}
+            hypothetical={currentHyp}
+          />
         </div>
-        <div className="orders-area">
-          <button
-            className="btn btn-secondary"
-            onClick={refreshOrders}
-            disabled={refreshing}
-          >
-            {refreshing ? t.refreshing : t.refreshOrders}
-          </button>
-          {renderOrderStatus()}
+
+        {/* Right: symbol tabs + calculator */}
+        <div className="col-right">
+          <div className="symbol-tabs-area">
+            <div className="stock-tabs">{symbolTabs}</div>
+          </div>
+          <Calculator
+            t={t}
+            symbol={currentSym}
+            lastRow={lastRow}
+            onCalculate={(row) => setHypothetical(currentSym, row)}
+            onClear={() => setHypothetical(currentSym, null)}
+            hasHypothetical={currentHyp !== null}
+            onRefreshOrders={refreshOrders}
+            refreshing={refreshing}
+            orderStatus={orderStatus}
+          />
         </div>
       </div>
-
-      {/* Transaction table */}
-      <TransactionTable
-        t={t}
-        rows={rows}
-        hypotheticals={hypotheticals[currentSym] || []}
-      />
-
-      {/* Hypothetical calculator */}
-      <Calculator
-        t={t}
-        symbol={currentSym}
-        lastRow={lastRow}
-        onAdd={(row) => addHypothetical(currentSym, row)}
-        onClear={() => clearHypotheticals(currentSym)}
-        hasHypotheticals={(hypotheticals[currentSym] || []).length > 0}
-      />
     </div>
   );
 }

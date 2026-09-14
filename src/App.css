@@ -16,21 +16,24 @@
   --border-light: #e9ecef;
   --text: #212529;
   --text-muted: #6c757d;
-  --primary: #0e57c5;
-  --primary-hover: #0b5ed7;
+  --primary: #3d68ae;
+  --primary-em: #2b497a;
   --secondary: #6c757d;
-  --buy: #0f6d32;
-  --buy-bg: #c3e2ce;
-  --sell: #d11b1b;
-  --sell-bg: #f7d5d5;
-  --div: #2563eb;
-  --div-bg: #dbeafe;
-  --other: #9333ea;
-  --other-bg: #f3e8ff;
-  --pos: #0f6d32;
-  --neg: #d11b1b;
-  --hyp-bg: #fef9c3;
-  --hyp-border: #facc15;
+  --buy: #166534;
+  --buy-bg: rgb(197, 235, 206);
+  --sell: #7f2222;
+  --sell-bg: #f3d7d7;
+  --div: #204786;
+  --div-bg: #d6e6fb;
+  --dividend_bg: #ecf7ff;
+  --other: #59279c;
+  --other-bg: #ede8fd;
+  --pos: #166534;
+  --neg: #af2c04;
+  --hyp-bg: #feee94;
+  --hyp-border: #ffde5c;
+  --refresh-btn-bg: #bb6334;
+  --refresh-btn-em: #a45121;
   font-family:
     "Inter",
     -apple-system,
@@ -97,6 +100,14 @@
 
 .sync-status {
   min-height: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.last-fetch-line {
+  font-size: 10px;
+  color: var(--text-muted);
 }
 
 /* ── Sync / order status messages ─────────────────────────────────────────── */
@@ -166,7 +177,7 @@
   color: #fff;
 }
 .btn-primary:hover:not(:disabled) {
-  background: var(--primary-hover);
+  background: var(--primary-em);
 }
 
 .btn-secondary {
@@ -180,12 +191,12 @@
 }
 
 .btn-orders {
-  background: #bb6334;
+  background: var(--refresh-btn-bg);
   color: #fff;
   white-space: nowrap;
 }
 .btn-orders:hover:not(:disabled) {
-  background: #a55130;
+  background: var(--refresh-btn-em);
 }
 
 /* outlined "Clear All" button */
@@ -233,7 +244,7 @@
   align-items: stretch;
   padding: 6px 12px;
   background: var(--bg);
-  border: none;
+  border: 1px solid var(--border);
   border-top: 3px solid transparent;
   border-bottom: 2px solid transparent;
   margin-bottom: -2px;
@@ -247,8 +258,9 @@
 }
 .account-tab.active {
   background: var(--surface);
+  border-color: var(--border);
   border-top-color: var(--primary);
-  border-bottom-color: transparent;
+  border-bottom-color: var(--surface);
 }
 
 /* Row 1: nickname (left) + balance (right) */
@@ -267,6 +279,16 @@
   gap: 6px;
 }
 
+.tab-new-badge {
+  font-size: 9px;
+  font-weight: 700;
+  background: var(--hyp-bg);
+  color: #92400e;
+  border-radius: 4px;
+  padding: 1px 4px;
+  line-height: 1.4;
+}
+
 .tab-nickname {
   font-weight: 600;
   font-size: 13px;
@@ -275,7 +297,7 @@
 .tab-balance {
   font-size: 12px;
   font-weight: 700;
-  color: var(--primary);
+  color: var(--primary-em);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -330,19 +352,9 @@
   opacity: 0.5;
 }
 
-.tab-new-badge {
-  font-size: 9px;
-  font-weight: 700;
-  background: #fff4a2;
-  color: #92400e;
-  border-radius: 4px;
-  padding: 1px 4px;
-  letter-spacing: 0.3px;
-  align-self: center;
-}
 .stock-tab.tab-today:not(.active) {
-  background: #faec80;
-  border-color: #f0c92f;
+  background: var(--hyp-bg);
+  border-color: var(--hyp-border);
 }
 
 .units-badge {
@@ -372,17 +384,16 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 12px;
-  font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
 
 .tx-table th {
-  padding: 6px 8px;
+  padding: 7px 10px;
   text-align: left;
   background: var(--bg);
   color: var(--text);
   font-weight: 700;
-  font-size: 11px;
+  font-size: 10px;
   letter-spacing: 0.3px;
   border-bottom: 1px solid var(--border);
   position: sticky;
@@ -393,9 +404,10 @@
 }
 
 .tx-table td {
-  padding: 6px 8px;
+  padding: 7px 10px;
   border-bottom: 1px solid var(--border-light);
   white-space: nowrap;
+  font-weight: 500;
 }
 .tx-table tbody tr:last-child td {
   border-bottom: none;
@@ -427,12 +439,12 @@
 
 /* Row type backgrounds — override cycle */
 .tx-table tbody tr.row-dividend {
-  background: #f0f9ff;
+  background: var(--dividend_bg);
 }
 
 /* Today's rows — light blue, placed after row-dividend to take priority */
 .tx-table tbody tr.row-today {
-  background: #fbf2ae;
+  background: var(--hyp-bg);
 }
 
 /* Hypothetical row — yellow */
@@ -454,7 +466,7 @@
   padding: 2px 7px;
   border-radius: 10px;
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0px;
   white-space: nowrap;
 }

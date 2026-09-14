@@ -15,8 +15,8 @@ async function call(action, data = {}) {
 }
 
 export const api = {
-  getAccounts:     ()                        => call('get_all_account'),
-  getTransactions: (data = {})               => call('get_transactions', data),
+  getAccounts:     ()                        => call('get_all_accounts'),
+  getTransactions: (accountIds = null)        => call('get_transactions', accountIds ? { account_ids: accountIds } : {}),
   syncActivities:  ()                        => call('update_all_activities'),
   refreshOrders:   (account_id)              => call('update_orders_by_account', { account_id }),
   updateNickname:  (account_id, nickname)    => call('update_nickname', { account_id, nickname }),

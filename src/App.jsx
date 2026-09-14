@@ -9,6 +9,8 @@ export default function App() {
 
   const [accounts, setAccounts] = useState([]);
   const [transactions, setTransactions] = useState([]);
+  const [accountsBalance, setAccountsBalance] = useState([]);
+  const [lastFetched, setLastFetched] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [syncStatus, setSyncStatus] = useState(null);
@@ -26,19 +28,34 @@ export default function App() {
     if (res.status === "success") setAccounts(res.data);
   };
 
-  const loadTransactions = async () => {
-    const res = await api.getTransactions();
-    if (res.status === "success") setTransactions(res.data);
+  const loadTransactions = async (accountIds = null) => {
+    const res = await api.getTransactions(accountIds);
+    if (res.status === "success") {
+      setTransactions(res.transactions || []);
+      setAccountsBalance(res.accounts_balance || []);
+      setLastFetched(res.last_fetched || []);
+    }
   };
 
   const triggerSync = async () => {
     setSyncing(true);
     try {
       const res = await api.syncActivities();
-      setSyncStatus(res);
       if (res.status === "success") {
-        // Reload both so last_successful_sync in account tabs also refreshes
-        await Promise.all([loadAccounts(), loadTransactions()]);
+        const accountData = res.data || {};
+        const successfulIds = Object.entries(accountData)
+          .filter(([, v]) => v.status === "success")
+          .map(([id]) => id);
+        const rowsUpdated = Object.values(accountData)
+          .filter((v) => v.status === "success")
+          .reduce((s, v) => s + (v.data?.rows_updated || 0), 0);
+        setSyncStatus({ status: "success", rowsUpdated });
+        await Promise.all([
+          loadAccounts(),
+          loadTransactions(successfulIds.length ? successfulIds : null),
+        ]);
+      } else {
+        setSyncStatus(res);
       }
     } catch (e) {
       setSyncStatus({ status: "fail", error: e.message });
@@ -72,21 +89,24 @@ export default function App() {
 
   return (
     <div className="app">
-      {loading ?
+      {loading ? (
         <div className="status-msg">{t.loading}</div>
-      : error ?
+      ) : error ? (
         <div className="status-msg error">{error}</div>
-      : <AccountTabs
+      ) : (
+        <AccountTabs
           t={t}
           accounts={activeAccounts}
           grouped={grouped}
+          accountsBalance={accountsBalance}
+          lastFetched={lastFetched}
           lang={lang}
           setLang={setLang}
           syncStatus={syncStatus}
           syncing={syncing}
           onSync={triggerSync}
         />
-      }
+      )}
     </div>
   );
 }

@@ -45,6 +45,9 @@ export const translations = {
     replace: 'Replace',
     tradingBalance: 'Trade Balance',
     calculate: 'Calculate',
+    netCashFlow: 'Net Cash Flow',
+    rowsUpdated: (n) => `${n} rows updated`,
+    lastOrders: 'Last orders',
   },
   zh: {
     title: '股票追踪',
@@ -89,5 +92,8 @@ export const translations = {
     replace: '替换',
     tradingBalance: '交易余额',
     calculate: '计算',
+    netCashFlow: '净现金流',
+    rowsUpdated: (n) => `${n} 行已更新`,
+    lastOrders: '最近订单',
   },
 };

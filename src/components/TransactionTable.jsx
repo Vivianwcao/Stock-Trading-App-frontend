@@ -31,7 +31,8 @@ function RealRow({ row, today }) {
   const isToday = row.trade_date?.slice(0, 10) === today;
   return (
     <tr
-      className={`row-${rowType} ${cycleClass(row.cycles)}${isToday ? " row-today" : ""}`}>
+      className={`row-${rowType} ${cycleClass(row.cycles)}${isToday ? " row-today" : ""}`}
+    >
       <td className="col-type">
         <span className={`type-badge ${TYPE_CLASS[row.type] || "type-other"}`}>
           {row.type}
@@ -49,7 +50,8 @@ function RealRow({ row, today }) {
           row.trading_balance < 0 ? "neg"
           : row.trading_balance > 0 ? "pos"
           : ""
-        }`}>
+        }`}
+      >
         {row.trading_balance != null ? fmtCAD(row.trading_balance) : "-"}
       </td>
       <td className="num">{fmtPrice(row.avg_bought_price)}</td>
@@ -61,7 +63,8 @@ function RealRow({ row, today }) {
           row.realized_profit > 0 ? "pos"
           : row.realized_profit < 0 ? "neg"
           : ""
-        }`}>
+        }`}
+      >
         {row.realized_profit != null ? fmtCAD(row.realized_profit) : "-"}
       </td>
       <td
@@ -69,7 +72,8 @@ function RealRow({ row, today }) {
           row.return_percentage > 0 ? "pos"
           : row.return_percentage < 0 ? "neg"
           : ""
-        }`}>
+        }`}
+      >
         {fmtPct(row.return_percentage)}
       </td>
     </tr>
@@ -102,7 +106,8 @@ function HypRow({ row }) {
           row.projectedPL > 0 ? "pos"
           : row.projectedPL < 0 ? "neg"
           : ""
-        }`}>
+        }`}
+      >
         {row.projectedPL != null ? fmtCAD(row.projectedPL) : "-"}
       </td>
       <td
@@ -110,7 +115,8 @@ function HypRow({ row }) {
           row.projectedReturn > 0 ? "pos"
           : row.projectedReturn < 0 ? "neg"
           : ""
-        }`}>
+        }`}
+      >
         {row.projectedReturn != null ? fmtPct(row.projectedReturn) : "-"}
       </td>
     </tr>

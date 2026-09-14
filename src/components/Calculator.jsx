@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { fmtPrice, fmtUnits, fmtCAD, fmtPct } from "../utils/format";
+import { fmtPrice, fmtUnits, fmtCAD, fmtPct, fmtVancouver } from "../utils/format";
 
 // avg_bought_price in the DB is negative - use Math.abs() throughout
 function getAbsAvgCost(lastRow) {
@@ -39,12 +39,14 @@ export default function Calculator({
   t,
   symbol,
   lastRow,
+  accountBalance,
+  ordersLastFetched,
   onCalculate,
   onClear,
   hasHypothetical,
   onRefreshOrders,
   refreshing,
-  orderStatus,
+  renderOrderStatus,
 }) {
   const [price, setPrice] = useState("");
   const [units, setUnits] = useState("");
@@ -95,23 +97,6 @@ export default function Calculator({
     onClear();
   };
 
-  const renderOrderStatus = () => {
-    if (refreshing)
-      return <span className="sync-msg syncing">{t.refreshing}</span>;
-    if (!orderStatus) return null;
-    if (orderStatus.status === "success")
-      return <span className="sync-msg ok">{t.ordersSuccess}</span>;
-    if (orderStatus.status === "cooldown") {
-      const { seconds: s = 0 } = orderStatus.data || {};
-      return (
-        <span className="sync-msg cooldown">{t.ordersCooldown(s)}</span>
-      );
-    }
-    if (orderStatus.status === "fail")
-      return <span className="sync-msg fail">{orderStatus.error}</span>;
-    return null;
-  };
-
   return (
     <div className="calculator">
       {/* Title row */}
@@ -136,6 +121,11 @@ export default function Calculator({
         )}
         {renderOrderStatus()}
       </div>
+      {ordersLastFetched && (
+        <div className="last-fetch-line">
+          {t.lastOrders}: {fmtVancouver(ordersLastFetched)}
+        </div>
+      )}
 
       {/* Current position summary */}
       <div className="calc-context">
@@ -147,6 +137,14 @@ export default function Calculator({
           <span className="calc-context-label">{t.currentAvgCost}</span>
           <strong>{avgCost != null ? fmtPrice(avgCost) : "-"}</strong>
         </div>
+        {accountBalance != null && (
+          <div className="calc-context-item">
+            <span className="calc-context-label">{t.netCashFlow}</span>
+            <strong className={accountBalance >= 0 ? "pos" : "neg"}>
+              {fmtCAD(accountBalance)}
+            </strong>
+          </div>
+        )}
       </div>
 
       {/* Inputs */}

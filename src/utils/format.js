@@ -9,16 +9,14 @@ export const fmtCAD = (n) => {
   }).format(n);
 };
 
-// avg_bought_price is stored as negative in DB - always show absolute value
 export const fmtPrice = (n, decimals = 4) => {
   if (n == null) return "-";
-  return `$${Math.abs(n).toFixed(decimals)}`;
+  return `$${Number(n).toFixed(decimals)}`;
 };
 
-// units are negative for SELL - show absolute value; type label handles direction
 export const fmtUnits = (n) => {
   if (n == null) return "-";
-  return Math.abs(n).toLocaleString("en-CA", {
+  return Number(n).toLocaleString("en-CA", {
     maximumFractionDigits: 4,
     useGrouping: false,
   });

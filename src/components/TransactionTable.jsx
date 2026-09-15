@@ -31,8 +31,7 @@ function RealRow({ row, today }) {
   const isToday = row.trade_date?.slice(0, 10) === today;
   return (
     <tr
-      className={`row-${rowType} ${cycleClass(row.cycles)}${isToday ? " row-today" : ""}`}
-    >
+      className={`row-${rowType} ${cycleClass(row.cycles)}${isToday ? " row-today" : ""}`}>
       <td className="col-type">
         <span className={`type-badge ${TYPE_CLASS[row.type] || "type-other"}`}>
           {row.type}
@@ -45,15 +44,6 @@ function RealRow({ row, today }) {
         {fmtCAD(row.amount)}
       </td>
       <td className="num">{fmtUnits(row.rolling_units)}</td>
-      <td
-        className={`num ${
-          row.trading_balance < 0 ? "neg"
-          : row.trading_balance > 0 ? "pos"
-          : ""
-        }`}
-      >
-        {row.trading_balance != null ? fmtCAD(row.trading_balance) : "-"}
-      </td>
       <td className="num">{fmtPrice(row.avg_bought_price)}</td>
       <td className="num">
         {row.dividend_balance != null ? fmtCAD(row.dividend_balance) : "-"}
@@ -63,8 +53,7 @@ function RealRow({ row, today }) {
           row.realized_profit > 0 ? "pos"
           : row.realized_profit < 0 ? "neg"
           : ""
-        }`}
-      >
+        }`}>
         {row.realized_profit != null ? fmtCAD(row.realized_profit) : "-"}
       </td>
       <td
@@ -72,9 +61,16 @@ function RealRow({ row, today }) {
           row.return_percentage > 0 ? "pos"
           : row.return_percentage < 0 ? "neg"
           : ""
-        }`}
-      >
+        }`}>
         {fmtPct(row.return_percentage)}
+      </td>
+      <td
+        className={`num ${
+          row.trading_balance < 0 ? "neg"
+          : row.trading_balance > 0 ? "pos"
+          : ""
+        }`}>
+        {row.trading_balance != null ? fmtCAD(row.trading_balance) : "-"}
       </td>
     </tr>
   );
@@ -106,8 +102,7 @@ function HypRow({ row }) {
           row.projectedPL > 0 ? "pos"
           : row.projectedPL < 0 ? "neg"
           : ""
-        }`}
-      >
+        }`}>
         {row.projectedPL != null ? fmtCAD(row.projectedPL) : "-"}
       </td>
       <td
@@ -115,8 +110,7 @@ function HypRow({ row }) {
           row.projectedReturn > 0 ? "pos"
           : row.projectedReturn < 0 ? "neg"
           : ""
-        }`}
-      >
+        }`}>
         {row.projectedReturn != null ? fmtPct(row.projectedReturn) : "-"}
       </td>
     </tr>
@@ -139,11 +133,11 @@ export default function TransactionTable({ t, rows, hypothetical = null }) {
             <th className="num">{t.units}</th>
             <th className="num">{t.amount}</th>
             <th className="num">{t.holdings}</th>
-            <th className="num">{t.tradingBalance}</th>
             <th className="num">{t.avgCost}</th>
             <th className="num">{t.dividends}</th>
             <th className="num">{t.realizedPL}</th>
             <th className="num">{t.returnPct}</th>
+            <th className="num">{t.tradingBalance}</th>
           </tr>
         </thead>
         <tbody>

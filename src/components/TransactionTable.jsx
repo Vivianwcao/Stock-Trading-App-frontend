@@ -92,7 +92,6 @@ function HypRow({ row }) {
         {fmtCAD(row.amount)}
       </td>
       <td className="num">{fmtUnits(row.newHoldings)}</td>
-      <td className="num">-</td>
       <td className="num">
         {row.newAvgCost != null ? fmtPrice(row.newAvgCost) : "-"}
       </td>
@@ -112,6 +111,14 @@ function HypRow({ row }) {
           : ""
         }`}>
         {row.projectedReturn != null ? fmtPct(row.projectedReturn) : "-"}
+      </td>
+      <td
+        className={`num ${
+          row.trading_balance < 0 ? "neg"
+          : row.trading_balance > 0 ? "pos"
+          : ""
+        }`}>
+        {row.trading_balance != null ? fmtCAD(row.trading_balance) : "-"}
       </td>
     </tr>
   );

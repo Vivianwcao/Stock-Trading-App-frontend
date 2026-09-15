@@ -1,5 +1,11 @@
 import { useState } from "react";
-import { fmtPrice, fmtUnits, fmtCAD, fmtPct, fmtVancouver } from "../utils/format";
+import {
+  fmtPrice,
+  fmtUnits,
+  fmtCAD,
+  fmtPct,
+  fmtVancouver,
+} from "../utils/format";
 
 // avg_bought_price in the DB is negative - use Math.abs() throughout
 function getAbsAvgCost(lastRow) {
@@ -13,7 +19,7 @@ function computeBuy(avgCost, currentHoldings, price, units) {
   const newAvgCost = newHoldings > 0 ? newInvested / newHoldings : 0;
   return {
     newHoldings,
-    newAvgCost,
+    newAvgCost: newHoldings > 0 ? -(newInvested / newHoldings) : 0,
     projectedPL: null,
     projectedReturn: null,
     amount: -(price * units),
@@ -28,7 +34,7 @@ function computeSell(avgCost, currentHoldings, price, units) {
     costBasis > 0 ? (projectedPL / costBasis) * 100 : null;
   return {
     newHoldings: currentHoldings - units,
-    newAvgCost: avgCost,
+    newAvgCost: -avgCost,
     projectedPL,
     projectedReturn,
     amount: proceeds,
@@ -74,15 +80,16 @@ export default function Calculator({
       return;
     }
     const result =
-      tradeType === "BUY"
-        ? computeBuy(avgCost, currentHoldings, p, u)
-        : computeSell(avgCost, currentHoldings, p, u);
+      tradeType === "BUY" ?
+        computeBuy(avgCost, currentHoldings, p, u)
+      : computeSell(avgCost, currentHoldings, p, u);
 
     const row = {
       type: tradeType,
       price: p,
-      units: u,
+      units: tradeType === "SELL" ? -u : u,
       trade_date: new Date().toISOString().slice(0, 10),
+      trading_balance: (lastRow?.trading_balance ?? 0) + result.amount,
       ...result,
     };
     setPreview(row);
@@ -110,8 +117,7 @@ export default function Calculator({
         <button
           className="btn btn-orders"
           onClick={onRefreshOrders}
-          disabled={refreshing}
-        >
+          disabled={refreshing}>
           {refreshing ? t.refreshing : t.refreshOrders}
         </button>
         {hasHypothetical && (
@@ -155,8 +161,7 @@ export default function Calculator({
             onClick={() => {
               setTradeType("BUY");
               setPreview(null);
-            }}
-          >
+            }}>
             {t.buy}
           </button>
           <button
@@ -164,8 +169,7 @@ export default function Calculator({
             onClick={() => {
               setTradeType("SELL");
               setPreview(null);
-            }}
-          >
+            }}>
             {t.sell}
           </button>
         </div>
@@ -197,7 +201,9 @@ export default function Calculator({
             placeholder="0"
           />
         </label>
-        <button className="btn btn-primary calc-btn-calculate" onClick={handleCalculate}>
+        <button
+          className="btn btn-primary calc-btn-calculate"
+          onClick={handleCalculate}>
           {t.calculate}
         </button>
       </div>
@@ -210,18 +216,23 @@ export default function Calculator({
           <div className="preview-grid">
             <div className="preview-item">
               <span className="preview-label">{t.newHoldings}</span>
-              <span className="preview-value">{fmtUnits(preview.newHoldings)}</span>
+              <span className="preview-value">
+                {fmtUnits(preview.newHoldings)}
+              </span>
             </div>
             <div className="preview-item">
               <span className="preview-label">{t.newAvgCost}</span>
               <span className="preview-value">
-                {preview.newAvgCost != null ? fmtPrice(preview.newAvgCost) : "-"}
+                {preview.newAvgCost != null ?
+                  fmtPrice(preview.newAvgCost)
+                : "-"}
               </span>
             </div>
             {preview.projectedPL != null && (
               <div className="preview-item">
                 <span className="preview-label">{t.projectedPL}</span>
-                <span className={`preview-value ${preview.projectedPL >= 0 ? "pos" : "neg"}`}>
+                <span
+                  className={`preview-value ${preview.projectedPL >= 0 ? "pos" : "neg"}`}>
                   {fmtCAD(preview.projectedPL)}
                 </span>
               </div>
@@ -229,7 +240,8 @@ export default function Calculator({
             {preview.projectedReturn != null && (
               <div className="preview-item">
                 <span className="preview-label">{t.projectedReturn}</span>
-                <span className={`preview-value ${preview.projectedReturn >= 0 ? "pos" : "neg"}`}>
+                <span
+                  className={`preview-value ${preview.projectedReturn >= 0 ? "pos" : "neg"}`}>
                   {fmtPct(preview.projectedReturn)}
                 </span>
               </div>

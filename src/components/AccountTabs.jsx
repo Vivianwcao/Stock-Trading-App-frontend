@@ -116,8 +116,8 @@ export default function AccountTabs({
     try {
       const res = await api.refreshOrders(activeAccount.id);
       setOrderStatus(res);
-      if (res.status === "success") {
-        await onRefresh([activeAccount.id]);
+      if (res.status === "success" && (res.data?.rows_updated ?? 0) > 0) {
+        await onRefresh(activeAccount.id);
       }
     } catch (e) {
       setOrderStatus({ status: "fail", error: e.message });

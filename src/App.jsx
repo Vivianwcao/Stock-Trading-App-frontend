@@ -37,6 +37,17 @@ export default function App() {
     }
   };
 
+  const refreshAccountTransactions = async (accountId) => {
+    const res = await api.getTransactions([accountId]);
+    if (res.status === "success") {
+      const fresh = res.transactions || [];
+      setTransactions((prev) => [
+        ...prev.filter((r) => r.nickname !== fresh[0]?.nickname),
+        ...fresh,
+      ]);
+    }
+  };
+
   const triggerSync = async () => {
     setSyncing(true);
     try {
@@ -104,7 +115,7 @@ export default function App() {
           syncStatus={syncStatus}
           syncing={syncing}
           onSync={triggerSync}
-          onRefresh={loadTransactions}
+          onRefresh={refreshAccountTransactions}
         />
       }
     </div>

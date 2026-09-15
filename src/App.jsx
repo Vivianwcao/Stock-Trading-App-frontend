@@ -89,12 +89,11 @@ export default function App() {
 
   return (
     <div className="app">
-      {loading ? (
+      {loading ?
         <div className="status-msg">{t.loading}</div>
-      ) : error ? (
+      : error ?
         <div className="status-msg error">{error}</div>
-      ) : (
-        <AccountTabs
+      : <AccountTabs
           t={t}
           accounts={activeAccounts}
           grouped={grouped}
@@ -105,8 +104,9 @@ export default function App() {
           syncStatus={syncStatus}
           syncing={syncing}
           onSync={triggerSync}
+          onRefresh={loadTransactions}
         />
-      )}
+      }
     </div>
   );
 }

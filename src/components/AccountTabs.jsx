@@ -30,6 +30,7 @@ export default function AccountTabs({
   syncStatus,
   syncing,
   onSync,
+  onRefresh,
 }) {
   const [activeNick, setActiveNick] = useState(
     () => accounts[0]?.nickname || null,
@@ -115,6 +116,9 @@ export default function AccountTabs({
     try {
       const res = await api.refreshOrders(activeAccount.id);
       setOrderStatus(res);
+      if (res.status === "success") {
+        await onRefresh([activeAccount.id]);
+      }
     } catch (e) {
       setOrderStatus({ status: "fail", error: e.message });
     } finally {
@@ -127,14 +131,17 @@ export default function AccountTabs({
     if (!syncStatus) return null;
     if (syncStatus.status === "success") {
       const msg =
-        syncStatus.rowsUpdated != null
-          ? t.rowsUpdated(syncStatus.rowsUpdated)
-          : t.syncSuccess;
+        syncStatus.rowsUpdated != null ?
+          t.rowsUpdated(syncStatus.rowsUpdated)
+        : t.syncSuccess;
       return <span className="sync-msg ok">{msg}</span>;
     }
     if (syncStatus.status === "cooldown") {
-      const { hours: h = 0, minutes: m = 0, seconds: s = 0 } =
-        syncStatus.data || {};
+      const {
+        hours: h = 0,
+        minutes: m = 0,
+        seconds: s = 0,
+      } = syncStatus.data || {};
       return (
         <span className="sync-msg cooldown">{t.syncCooldown(h, m, s)}</span>
       );
@@ -158,9 +165,7 @@ export default function AccountTabs({
     }
     if (orderStatus.status === "cooldown") {
       const { seconds: s = 0 } = orderStatus.data || {};
-      return (
-        <span className="sync-msg cooldown">{t.ordersCooldown(s)}</span>
-      );
+      return <span className="sync-msg cooldown">{t.ordersCooldown(s)}</span>;
     }
     if (orderStatus.status === "fail")
       return <span className="sync-msg fail">{orderStatus.error}</span>;
@@ -169,7 +174,6 @@ export default function AccountTabs({
 
   return (
     <div className="app-columns">
-
       {/* ── LEFT: account tabs + transaction table ── */}
       <div className="col-accounts">
         <div className="account-tabs">
@@ -182,8 +186,7 @@ export default function AccountTabs({
               <button
                 key={acc.id}
                 className={`account-tab ${acc.nickname === activeNick ? "active" : ""}`}
-                onClick={() => setActiveNick(acc.nickname)}
-              >
+                onClick={() => setActiveNick(acc.nickname)}>
                 <div className="tab-row-1">
                   <span className="tab-nickname">{acc.nickname}</span>
                   {hasToday && <span className="tab-new-badge">NEW</span>}
@@ -194,9 +197,9 @@ export default function AccountTabs({
                     {acc.account_type.replace(/_/g, " ").toUpperCase()}
                   </span>
                   <span className="tab-sync">
-                    {acc.last_successful_sync
-                      ? fmtVancouver(acc.last_successful_sync)
-                      : "Never synced"}
+                    {acc.last_successful_sync ?
+                      fmtVancouver(acc.last_successful_sync)
+                    : "Never synced"}
                   </span>
                 </div>
               </button>
@@ -204,38 +207,32 @@ export default function AccountTabs({
           })}
         </div>
 
-        {symbolList.length === 0 ? (
+        {symbolList.length === 0 ?
           <div className="status-msg">{t.noSymbols}</div>
-        ) : (
-          <TransactionTable t={t} rows={rows} hypothetical={currentHyp} />
-        )}
+        : <TransactionTable t={t} rows={rows} hypothetical={currentHyp} />}
       </div>
 
       {/* ── RIGHT: sync controls + symbol tabs + calculator ── */}
       <div className="col-utility">
-
         {/* Sync button + language toggle */}
         <div className="utility-top">
           <div className="utility-controls">
             <button
               className="btn btn-primary btn-sync"
               onClick={onSync}
-              disabled={syncing}
-            >
+              disabled={syncing}>
               {syncing ? t.syncing : t.syncActivities}
             </button>
             <div className="lang-toggle">
               <button
                 className={`lang-btn ${lang === "en" ? "active" : ""}`}
-                onClick={() => setLang("en")}
-              >
+                onClick={() => setLang("en")}>
                 EN
               </button>
               <span className="lang-sep">|</span>
               <button
                 className={`lang-btn ${lang === "zh" ? "active" : ""}`}
-                onClick={() => setLang("zh")}
-              >
+                onClick={() => setLang("zh")}>
                 中文
               </button>
             </div>
@@ -264,8 +261,7 @@ export default function AccountTabs({
                 <button
                   key={sym}
                   className={`stock-tab ${sym === currentSym ? "active" : ""} ${!isHeld ? "closed" : ""} ${hasToday ? "tab-today" : ""}`}
-                  onClick={() => setActiveSym(sym)}
-                >
+                  onClick={() => setActiveSym(sym)}>
                   {sym}
                   {isHeld && (
                     <span className="units-badge">{last.rolling_units}</span>

@@ -102,7 +102,7 @@ export const translations = {
     amount: "金额",
     holdings: "持仓量",
     avgCost: "平均成本",
-    dividends: "股息",
+    dividends: "分红",
     boughtBalance: "总买入",
     realizedPL: "已实现盈亏",
     returnPct: "回报率",
@@ -140,7 +140,7 @@ export const translations = {
     currentBalance: "当前价值",
     totalCurrent: "总当前价值",
     currentRatio: "当前占比",
-    dividendBalance: "股息",
+    dividendBalance: "分红",
     // rank selector
     rankBy: "排序",
     rankBoughtRatio: "买入占比",

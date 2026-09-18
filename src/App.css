@@ -114,6 +114,7 @@
 .last-fetch-line {
   font-size: 10px;
   color: var(--text-muted);
+  margin-bottom: 12px;
 }
 
 /* ── Sync / order status messages ─────────────────────────────────────────── */
@@ -543,7 +544,7 @@
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
-  margin-bottom: 8px;
+  margin-bottom: 2px;
 }
 
 /* Current position summary */

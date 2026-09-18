@@ -144,7 +144,7 @@ export default function AccountTabs({
         const timestamp =
           ft?.fetched_at ?? (typeof ft === "string" ? ft : null);
         if (timestamp) {
-          onUpdateLastFetched("activities", activeAccount.id, timestamp);
+          onUpdateLastFetched("orders", activeAccount.id, timestamp);
         }
       }
     } catch (e) {
@@ -172,7 +172,8 @@ export default function AccountTabs({
   };
 
   const renderSyncStatus = () => {
-    if (syncing && !syncStatus) return <span className="sync-msg syncing">{t.syncing}</span>;
+    if (syncing && !syncStatus)
+      return <span className="sync-msg syncing">{t.syncing}</span>;
     if (!syncStatus) return null;
     if (syncStatus.status === "success") {
       const msg =
@@ -294,15 +295,11 @@ export default function AccountTabs({
         </div>
 
         {/* Content area */}
-        {activeSubTab === "table" ? (
-          symbolList.length === 0 ? (
+        {activeSubTab === "table" ?
+          symbolList.length === 0 ?
             <div className="status-msg">{t.noSymbols}</div>
-          ) : (
-            <TransactionTable t={t} rows={rows} hypothetical={currentHyp} />
-          )
-        ) : (
-          <AnalysisTable t={t} rows={analysisRows} rankCol={rankCol} />
-        )}
+          : <TransactionTable t={t} rows={rows} hypothetical={currentHyp} />
+        : <AnalysisTable t={t} rows={analysisRows} rankCol={rankCol} />}
       </div>
 
       {/* ── RIGHT: utility panel (content changes per sub-tab) ── */}
@@ -340,7 +337,7 @@ export default function AccountTabs({
           </div>
         </div>
 
-        {activeSubTab === "table" ? (
+        {activeSubTab === "table" ?
           <>
             {/* Symbol tabs */}
             <div className="symbol-tabs-area">
@@ -385,8 +382,7 @@ export default function AccountTabs({
               />
             )}
           </>
-        ) : (
-          /* Analysis mode: Refresh Positions + rank selector */
+        : /* Analysis mode: Refresh Positions + rank selector */
           <div className="analysis-controls">
             <div className="analysis-refresh">
               <button
@@ -397,7 +393,7 @@ export default function AccountTabs({
                   t.refreshing
                 : `${t.refreshPositions}: ${activeNick}`}
               </button>
-              <div className="sync-status" style={{ marginTop: "4px" }}>
+              <div className="sync-status">
                 {renderPositionStatus()}
                 {positionsLastSync && !positionsRefreshing && (
                   <span className="last-fetch-line">
@@ -419,7 +415,7 @@ export default function AccountTabs({
               ))}
             </div>
           </div>
-        )}
+        }
       </div>
     </div>
   );

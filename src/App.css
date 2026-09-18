@@ -74,8 +74,8 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding: 10px 12px 8px;
-  gap: 8px;
+  padding: 6px;
+  gap: 6px;
 }
 
 /* Drag handle between left and right panels */
@@ -96,7 +96,7 @@
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  padding: 8px 10px;
+  padding: 6px;
   gap: 6px;
   overflow-y: auto;
 }
@@ -839,4 +839,68 @@
 /* Analysis table: faint alternating row background */
 .analysis-table tbody tr:nth-child(even) {
   background: rgba(0, 0, 0, 0.03);
+}
+
+/* Account tab: two-value right column */
+.tab-right-values {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+
+.tab-total-bought {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--neg);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  margin-left: auto;
+}
+
+.tab-total-current {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--buy);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Sync Activities section (table sub-tab right panel) */
+.sync-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* Analysis summary block (totalBought + totalCurrent) */
+.analysis-summary {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.analysis-summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.analysis-summary-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.analysis-summary-value {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }

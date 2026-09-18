@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { api } from "../api";
-import { fmtBalance, fmtVancouver } from "../utils/format";
+import { fmtVancouver, fmtCAD } from "../utils/format";
 import TransactionTable from "./TransactionTable";
 import Calculator from "./Calculator";
 import AnalysisTable from "./AnalysisTable";
@@ -26,6 +26,7 @@ const RANK_OPTIONS = [
   { key: "bought_balance_rnk", labelKey: "rankBoughtBalance" },
   { key: "current_balance_rnk", labelKey: "rankCurrentBalance" },
   { key: "growth_percentage_rnk", labelKey: "rankGrowth" },
+  { key: "cost_basis", labelKey: "rankCostBasis" },
 ];
 
 export default function AccountTabs({
@@ -35,11 +36,9 @@ export default function AccountTabs({
   lastFetched,
   lang,
   setLang,
-  syncStatus,
-  syncing,
-  onSync,
   analysis,
   onSetAnalysis,
+  onSetAccounts,
   onMergeTransactions,
   onUpdateLastFetched,
 }) {
@@ -57,6 +56,10 @@ export default function AccountTabs({
   const [positionStatus, setPositionStatus] = useState(null);
   const [rankCol, setRankCol] = useState("bought_ratio_rnk");
 
+  // Per-account sync state (replaces global sync in App.jsx)
+  const [syncing, setSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState(null);
+
   // Reset per-account state when switching accounts (skip initial mount)
   const isInitialMount = useRef(true);
   useEffect(() => {
@@ -71,6 +74,8 @@ export default function AccountTabs({
     setActiveSubTab("table");
     setPositionStatus(null);
     setPositionsRefreshing(false);
+    setSyncStatus(null);
+    setSyncing(false);
   }, [activeNick]);
 
   const activeAccount = accounts.find((a) => a.nickname === activeNick);
@@ -129,6 +134,42 @@ export default function AccountTabs({
     setHypotheticals((prev) => ({ ...prev, [sym]: row }));
   };
 
+  // Per-account sync activities
+  const syncActivities = async () => {
+    if (!activeAccount?.id) return;
+    setSyncing(true);
+    setSyncStatus(null);
+    try {
+      const res = await api.updateActivitiesByAccount(activeAccount.id);
+      setSyncStatus(res);
+      if (res.status === "success") {
+        const ft = res.data?.fetched_at;
+        const timestamp =
+          ft?.fetched_at ?? (typeof ft === "string" ? ft : null);
+        if (timestamp) {
+          onUpdateLastFetched("activities", activeAccount.id, timestamp);
+        }
+        // Reload transactions for this account
+        const txRes = await api.getTransactions();
+        if (txRes.status === "success") {
+          const acctTxns = (txRes.data || []).filter(
+            (r) => r.account_id === activeAccount.id,
+          );
+          onMergeTransactions(activeAccount.id, acctTxns);
+        }
+        // Refresh accounts to update last_successful_sync on tabs
+        const accRes = await api.getAccounts();
+        if (accRes.status === "success") {
+          onSetAccounts(accRes.data?.accounts || []);
+        }
+      }
+    } catch (e) {
+      setSyncStatus({ status: "fail", error: e.message });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const refreshOrders = async () => {
     if (!activeAccount?.id) return;
     setRefreshing(true);
@@ -136,12 +177,10 @@ export default function AccountTabs({
       const res = await api.refreshOrders(activeAccount.id);
       setOrderStatus(res);
       if (res.status === "success") {
-        // Transactions are returned directly — merge by account_id
         const freshTxns = res.data?.transactions || [];
         if (freshTxns.length > 0) {
           onMergeTransactions(activeAccount.id, freshTxns);
         }
-        // fetched_at from backend is the activities timestamp for this account
         const ft = res.data?.fetched_at;
         const timestamp =
           ft?.fetched_at ?? (typeof ft === "string" ? ft : null);
@@ -163,7 +202,6 @@ export default function AccountTabs({
       const res = await api.refreshPositions(activeAccount.id);
       setPositionStatus(res);
       if (res.status === "success") {
-        // Analysis rows returned directly
         onSetAnalysis(res.data || []);
       }
     } catch (e) {
@@ -246,12 +284,16 @@ export default function AccountTabs({
   // last_successful_sync from the positions data for this account
   const positionsLastSync = analysisRows[0]?.last_successful_sync ?? null;
 
+  // Analysis totals for the active account (same value on all rows for one account)
+  const analysisTotalBought = analysisRows[0]?.total_bought ?? null;
+  const analysisTotalCurrent = analysisRows[0]?.total_current ?? null;
+
   const handleDividerMouseDown = (e) => {
     e.preventDefault();
     const startX = e.clientX;
     const startWidth = utilityWidth;
     const onMouseMove = (ev) => {
-      const delta = startX - ev.clientX; // drag left → wider utility (narrower table)
+      const delta = startX - ev.clientX;
       setUtilityWidth(Math.max(200, Math.min(480, startWidth + delta)));
     };
     const onMouseUp = () => {
@@ -277,6 +319,34 @@ export default function AccountTabs({
             const hasToday = Object.values(accSymbols).some((rows) =>
               rows.some((r) => r.trade_date?.slice(0, 10) === today),
             );
+
+            // Determine which current value to show: analysis.total_current vs acc.balance
+            // Use whichever has the more recent sync date
+            const accAnalysis = analysis.filter(
+              (r) => r.nickname === acc.nickname,
+            );
+            const tabTotalBought = accAnalysis[0]?.total_bought ?? null;
+            const analysisCurrent = accAnalysis[0]?.total_current ?? null;
+            const analysisSync = accAnalysis[0]?.last_successful_sync ?? null;
+            const accountSync = acc.last_successful_sync ?? null;
+
+            let currentValue, currentSyncDate;
+            if (analysisSync && accountSync) {
+              if (analysisSync > accountSync) {
+                currentValue = analysisCurrent;
+                currentSyncDate = analysisSync;
+              } else {
+                currentValue = acc.balance;
+                currentSyncDate = accountSync;
+              }
+            } else if (analysisSync) {
+              currentValue = analysisCurrent;
+              currentSyncDate = analysisSync;
+            } else {
+              currentValue = acc.balance;
+              currentSyncDate = accountSync;
+            }
+
             return (
               <button
                 key={acc.id}
@@ -285,17 +355,26 @@ export default function AccountTabs({
                 <div className="tab-row-1">
                   <span className="tab-nickname">{acc.nickname}</span>
                   {hasToday && <span className="tab-new-badge">NEW</span>}
-                  <span className="tab-balance">{fmtBalance(acc.balance)}</span>
+                  {tabTotalBought != null && (
+                    <span className="tab-total-bought">
+                      {fmtCAD(tabTotalBought)}
+                    </span>
+                  )}
                 </div>
                 <div className="tab-row-2">
                   <span className="tab-type">
                     {acc.account_type.replace(/_/g, " ").toUpperCase()}
                   </span>
-                  <span className="tab-sync">
-                    {acc.last_successful_sync ?
-                      fmtVancouver(acc.last_successful_sync)
-                    : "Never synced"}
-                  </span>
+                  <div className="tab-right-values">
+                    <span className="tab-total-current">
+                      {currentValue != null ? fmtCAD(currentValue) : "—"}
+                    </span>
+                    <span className="tab-sync">
+                      {currentSyncDate ?
+                        fmtVancouver(currentSyncDate)
+                      : "Never synced"}
+                    </span>
+                  </div>
                 </div>
               </button>
             );
@@ -327,43 +406,45 @@ export default function AccountTabs({
       {/* ── DIVIDER ── */}
       <div className="col-divider" onMouseDown={handleDividerMouseDown} />
 
-      {/* ── RIGHT: utility panel (content changes per sub-tab) ── */}
+      {/* ── RIGHT: utility panel ── */}
       <div className="col-utility" style={{ width: utilityWidth }}>
-        {/* Sync button + language toggle (always visible) */}
+        {/* Lang toggle — always visible */}
         <div className="utility-top">
-          <div className="utility-controls">
+          <div className="lang-toggle">
             <button
-              className="btn btn-primary btn-sync"
-              onClick={onSync}
-              disabled={syncing}>
-              {syncing ? t.syncing : t.syncActivities}
+              className={`lang-btn ${lang === "en" ? "active" : ""}`}
+              onClick={() => setLang("en")}>
+              EN
             </button>
-            <div className="lang-toggle">
-              <button
-                className={`lang-btn ${lang === "en" ? "active" : ""}`}
-                onClick={() => setLang("en")}>
-                EN
-              </button>
-              <span className="lang-sep">|</span>
-              <button
-                className={`lang-btn ${lang === "zh" ? "active" : ""}`}
-                onClick={() => setLang("zh")}>
-                中文
-              </button>
-            </div>
-          </div>
-          <div className="sync-status">
-            {renderSyncStatus()}
-            {actLastFetched && !syncing && (
-              <span className="last-fetch-line">
-                {t.lastSync}: {fmtVancouver(actLastFetched)}
-              </span>
-            )}
+            <span className="lang-sep">|</span>
+            <button
+              className={`lang-btn ${lang === "zh" ? "active" : ""}`}
+              onClick={() => setLang("zh")}>
+              中文
+            </button>
           </div>
         </div>
 
         {activeSubTab === "table" ?
           <>
+            {/* Sync Activities section */}
+            <div className="sync-section">
+              <button
+                className="btn btn-primary btn-sync"
+                onClick={syncActivities}
+                disabled={syncing}>
+                {syncing ? t.syncing : t.syncActivities}
+              </button>
+              <div className="sync-status">
+                {renderSyncStatus()}
+                {actLastFetched && !syncing && (
+                  <span className="last-fetch-line">
+                    {t.lastSync}: {fmtVancouver(actLastFetched)}
+                  </span>
+                )}
+              </div>
+            </div>
+
             {/* Symbol tabs */}
             <div className="symbol-tabs-area">
               <div className="stock-tabs">
@@ -407,7 +488,7 @@ export default function AccountTabs({
               />
             )}
           </>
-        : /* Analysis mode: Refresh Positions + rank selector */
+        : /* Analysis mode: Refresh Positions + summary + rank selector */
           <div className="analysis-controls">
             <div className="analysis-refresh">
               <button
@@ -427,6 +508,32 @@ export default function AccountTabs({
                 )}
               </div>
             </div>
+
+            {/* Account totals summary */}
+            {(analysisTotalBought != null || analysisTotalCurrent != null) && (
+              <div className="analysis-summary">
+                {analysisTotalBought != null && (
+                  <div className="analysis-summary-item">
+                    <span className="analysis-summary-label">
+                      {t.totalBought}
+                    </span>
+                    <strong className="analysis-summary-value neg">
+                      {fmtCAD(analysisTotalBought)}
+                    </strong>
+                  </div>
+                )}
+                {analysisTotalCurrent != null && (
+                  <div className="analysis-summary-item">
+                    <span className="analysis-summary-label">
+                      {t.totalCurrent}
+                    </span>
+                    <strong className="analysis-summary-value pos">
+                      {fmtCAD(analysisTotalCurrent)}
+                    </strong>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="rank-selector">
               <span className="rank-label">{t.rankBy}</span>

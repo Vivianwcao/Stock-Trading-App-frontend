@@ -1,13 +1,13 @@
 import { fmtPrice, fmtUnits, fmtCAD, fmtPct } from "../utils/format";
 
 // rows: filtered to the active account's nickname, from the analysis view
-// rankCol: one of the *_rnk column names — rank 1 = top position
+// rankCol: one of the *_rnk column names or "cost_basis" — rank 1 = top position
 export default function AnalysisTable({ t, rows, rankCol }) {
   if (!rows.length) {
     return <div className="status-msg">{t.noPositions}</div>;
   }
 
-  // rank columns are 1-based integers; sort ascending (rank 1 first)
+  // rank columns are 1-based integers; cost_basis is a raw decimal — both sort ascending
   const sorted = [...rows].sort(
     (a, b) => (a[rankCol] ?? 9999) - (b[rankCol] ?? 9999),
   );
@@ -23,10 +23,8 @@ export default function AnalysisTable({ t, rows, rankCol }) {
             <th className="num">{t.currentPrice}</th>
             <th className="num">{t.growthPct}</th>
             <th className="num">{t.boughtBalance}</th>
-            <th className="num">{t.totalBought}</th>
             <th className="num">{t.boughtRatio}</th>
             <th className="num">{t.currentBalance}</th>
-            <th className="num">{t.totalCurrent}</th>
             <th className="num">{t.currentRatio}</th>
             <th className="num">{t.dividendBalance}</th>
           </tr>
@@ -51,14 +49,12 @@ export default function AnalysisTable({ t, rows, rankCol }) {
               <td className="num rank-col rank-bought">
                 {fmtCAD(row.bought_balance)}
               </td>
-              <td className="num">{fmtCAD(row.total_bought)}</td>
               <td className="num rank-col rank-pct">
                 {row.bought_ratio != null ? `${row.bought_ratio}%` : "-"}
               </td>
               <td className="num rank-col rank-current">
                 {fmtCAD(row.current_balance)}
               </td>
-              <td className="num">{fmtCAD(row.total_current)}</td>
               <td className="num rank-col rank-pct">
                 {row.current_ratio != null ? `${row.current_ratio}%` : "-"}
               </td>

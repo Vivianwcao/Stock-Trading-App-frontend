@@ -73,6 +73,7 @@ export const translations = {
     rankBoughtBalance: "Bought Balance",
     rankCurrentBalance: "Current Value",
     rankGrowth: "Growth %",
+    rankCostBasis: "Lowest Cost",
   },
   zh: {
     title: "股票追踪",
@@ -132,7 +133,7 @@ export const translations = {
     rowsUpdated: (n) => `${n} 行已更新`,
     // analysis table headers
     symbol: "股票",
-    costBasis: "成本基准",
+    costBasis: "平均买入",
     currentPrice: "当前价格",
     growthPct: "增长率",
     totalBought: "总买入",
@@ -148,5 +149,6 @@ export const translations = {
     rankBoughtBalance: "总买入",
     rankCurrentBalance: "当前价值",
     rankGrowth: "增长率",
+    rankCostBasis: "最低成本",
   },
 };

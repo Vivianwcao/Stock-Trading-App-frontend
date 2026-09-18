@@ -9,7 +9,6 @@ export default function App() {
 
   const [accounts, setAccounts] = useState([]);
   const [transactions, setTransactions] = useState([]);
-  const [accountsBalance, setAccountsBalance] = useState([]);
   const [lastFetched, setLastFetched] = useState([]);
   const [analysis, setAnalysis] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -18,67 +17,114 @@ export default function App() {
   const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
-    Promise.all([loadAccounts(), loadTransactions(), loadAnalysis()])
+    loadPageData()
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
 
-  const loadAccounts = async () => {
-    const res = await api.getAccounts();
-    if (res.status === "success") setAccounts(res.data);
-  };
-
-  const loadTransactions = async (accountIds = null) => {
-    const res = await api.getTransactions(accountIds);
+  // Single call: loads accounts, transactions, analysis, last_fetched together
+  const loadPageData = async () => {
+    const res = await api.onPageLoad();
     if (res.status === "success") {
-      setTransactions(res.transactions || []);
-      setAccountsBalance(res.accounts_balance || []);
-      setLastFetched(res.last_fetched || []);
+      const d = res.data;
+      setAccounts(d.accounts || []);
+      setTransactions(d.transactions || []);
+      setAnalysis(d.analysis || []);
+      setLastFetched(d.last_fetched || []);
+    } else {
+      throw new Error(res.error || "Failed to load data");
     }
   };
 
-  // get_analysis returns a raw array (no status wrapper)
-  const loadAnalysis = async () => {
-    const res = await api.getAnalysis();
-    setAnalysis(Array.isArray(res) ? res : []);
-  };
-
-  const refreshAccountTransactions = async (accountId) => {
-    const res = await api.getTransactions([accountId]);
+  // Full transactions refresh (called after sync completes)
+  const loadTransactions = async () => {
+    const res = await api.getTransactions();
     if (res.status === "success") {
-      const fresh = res.transactions || [];
-      setTransactions((prev) => [
-        ...prev.filter((r) => r.nickname !== fresh[0]?.nickname),
-        ...fresh,
-      ]);
+      setTransactions(res.data || []);
     }
   };
 
   const triggerSync = async () => {
     setSyncing(true);
+    setSyncStatus(null);
     try {
-      const res = await api.syncActivities();
-      if (res.status === "success") {
-        const accountData = res.data || {};
-        const successfulIds = Object.entries(accountData)
-          .filter(([, v]) => v.status === "success")
-          .map(([id]) => id);
-        const rowsUpdated = Object.values(accountData)
-          .filter((v) => v.status === "success")
-          .reduce((s, v) => s + (v.data?.rows_updated || 0), 0);
-        setSyncStatus({ status: "success", rowsUpdated });
-        await Promise.all([
-          loadAccounts(),
-          loadTransactions(successfulIds.length ? successfulIds : null),
-        ]);
-      } else {
-        setSyncStatus(res);
+      // Step 1: update accounts — proceed even on cooldown (data still fresh)
+      const accountsRes = await api.updateAndGetAccounts();
+      const freshAccounts =
+        accountsRes.status === "success"
+          ? accountsRes.data?.accounts || []
+          : accounts;
+      if (accountsRes.status === "success") {
+        setAccounts(freshAccounts);
+      }
+
+      const toUpdate = freshAccounts.filter(
+        (a) => a.nickname && a.status === "open",
+      );
+
+      // Step 2: per-account activities update with 22s gap between accounts
+      for (let i = 0; i < toUpdate.length; i++) {
+        const acct = toUpdate[i];
+        const res = await api.updateActivitiesByAccount(acct.id);
+        if (res.status === "success") {
+          setSyncStatus({ status: "success", rowsUpdated: res.data?.rows_updated || 0 });
+          // fetched_at is {account_id, fetched_at} after backend bug fix
+          const ft = res.data?.fetched_at;
+          const timestamp =
+            ft?.fetched_at ?? (typeof ft === "string" ? ft : null);
+          if (timestamp) {
+            setLastFetched((prev) => [
+              ...prev.filter(
+                (r) =>
+                  !(
+                    r.api_source === "activities" && r.account_id === acct.id
+                  ),
+              ),
+              {
+                api_source: "activities",
+                account_id: acct.id,
+                fetched_at: timestamp,
+              },
+            ]);
+          }
+        } else if (res.status === "cooldown") {
+          setSyncStatus({ status: "cooldown", data: res.data });
+        }
+        // Wait 22s between accounts (backend enforces 20s cooldown; 2s buffer)
+        if (i < toUpdate.length - 1) {
+          await new Promise((resolve) => setTimeout(resolve, 22000));
+        }
+      }
+
+      // Step 3: reload transactions + re-fetch accounts to refresh last_successful_sync on tabs
+      await loadTransactions();
+      const accRes = await api.getAccounts();
+      if (accRes.status === "success") {
+        setAccounts(accRes.data?.accounts || []);
       }
     } catch (e) {
       setSyncStatus({ status: "fail", error: e.message });
     } finally {
       setSyncing(false);
     }
+  };
+
+  // Merge fresh transactions for one account_id into global state
+  const mergeTransactionsByAccountId = (accountId, freshTxns) => {
+    setTransactions((prev) => [
+      ...prev.filter((r) => r.account_id !== accountId),
+      ...freshTxns,
+    ]);
+  };
+
+  // Update a single last_fetched entry in state
+  const updateLastFetchedEntry = (apiSource, accountId, fetchedAt) => {
+    setLastFetched((prev) => [
+      ...prev.filter(
+        (r) => !(r.api_source === apiSource && r.account_id === accountId),
+      ),
+      { api_source: apiSource, account_id: accountId, fetched_at: fetchedAt },
+    ]);
   };
 
   const grouped = useMemo(() => {
@@ -114,16 +160,16 @@ export default function App() {
           t={t}
           accounts={activeAccounts}
           grouped={grouped}
-          accountsBalance={accountsBalance}
           lastFetched={lastFetched}
           lang={lang}
           setLang={setLang}
           syncStatus={syncStatus}
           syncing={syncing}
           onSync={triggerSync}
-          onRefresh={refreshAccountTransactions}
           analysis={analysis}
-          onReloadAnalysis={loadAnalysis}
+          onSetAnalysis={setAnalysis}
+          onMergeTransactions={mergeTransactionsByAccountId}
+          onUpdateLastFetched={updateLastFetchedEntry}
         />
       }
     </div>

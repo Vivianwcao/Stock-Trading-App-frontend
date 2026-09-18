@@ -34,6 +34,12 @@
   --hyp-border: #ffde5c;
   --refresh-btn-bg: #bb6334;
   --refresh-btn-em: #a45121;
+  /* Analysis tab / Refresh Positions theme (muted purple) */
+  --analysis-accent: #694bc3;
+  --analysis-accent-em: #5c3d8a;
+  --analysis-tab-bg: #694bc3;
+  /* Table sub-tab background (warm terracotta) */
+  --table-tab-bg: #bb6334;
   font-family:
     "Inter",
     -apple-system,
@@ -158,7 +164,7 @@
 
 /* ── Buttons ──────────────────────────────────────────────────────────────── */
 .btn {
-  padding: 5px 12px;
+  padding: 8px 12px;
   border: none;
   border-radius: 6px;
   font-size: 12px;
@@ -197,6 +203,16 @@
 }
 .btn-orders:hover:not(:disabled) {
   background: var(--refresh-btn-em);
+}
+
+/* Analysis tab / Refresh Positions button (muted slate blue) */
+.btn-analysis {
+  background: var(--analysis-accent);
+  color: #fff;
+  white-space: nowrap;
+}
+.btn-analysis:hover:not(:disabled) {
+  background: var(--analysis-accent-em);
 }
 
 /* outlined "Clear All" button */
@@ -655,37 +671,65 @@
 }
 
 /* ── Sub-tabs (Table | Analysis) ─────────────────────────────────────────── */
+/*
+ * Together the two sub-tabs span ~one account tab width (min-width 130px).
+ * align-self: flex-start prevents them from stretching to full column width.
+ */
 .sub-tabs {
   display: flex;
-  gap: 2px;
-  border-bottom: 1px solid var(--border);
+  gap: 0;
+  align-self: flex-start;
+  width: 200px;
+  border-bottom: 2px solid var(--border);
   flex-shrink: 0;
-  padding: 0;
+  margin-bottom: 0;
 }
 
 .sub-tab {
-  padding: 5px 16px;
-  border: 1px solid transparent;
+  flex: 1;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
   border-bottom: none;
-  background: none;
+  border-radius: 4px 4px 0 0;
+  margin-bottom: -2px;
   cursor: pointer;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600; /* always bold */
   font-family: inherit;
-  color: var(--text-muted);
-  border-radius: 4px 4px 0 0;
-  margin-bottom: -1px;
-  transition: color 0.1s;
+  color: var(--text); /* same dark as account tab nickname */
+  text-align: center;
+  transition: background 0.1s; /* no color transition — text doesn't change */
 }
 .sub-tab:hover {
-  color: var(--text);
+  background: var(--bg); /* background shifts, text stays */
 }
-.sub-tab.active {
-  color: var(--primary);
+
+/* Table sub-tab: inactive = light warm tint, active = terracotta */
+.sub-tab.table-tab {
+  background: #fdf4ef;
+}
+.sub-tab.table-tab:hover:not(.active) {
+  background: #f5e4d5;
+}
+.sub-tab.table-tab.active {
+  background: var(--table-tab-bg);
+  color: #fff;
   font-weight: 600;
-  background: var(--surface);
-  border-color: var(--border);
-  border-bottom-color: var(--surface);
+  border-color: var(--refresh-btn-em);
+}
+
+/* Analysis sub-tab: inactive = light purple tint, active = purple */
+.sub-tab.analysis-tab {
+  background: #f0ebf8;
+}
+.sub-tab.analysis-tab:hover:not(.active) {
+  background: #e2d8f0;
+}
+.sub-tab.analysis-tab.active {
+  background: var(--analysis-tab-bg);
+  color: #fff;
+  font-weight: 600;
+  border-color: var(--analysis-accent-em);
 }
 
 /* ── Symbol tabs: cap height so calculator gets more room (40/60 split) ── */
@@ -749,4 +793,32 @@
   color: #fff;
   border-color: var(--primary);
   font-weight: 600;
+}
+
+/* ── Analysis table: column emphasis ─────────────────────────────────────── */
+/* Symbol: dark navy, extra weight to anchor each row */
+.tx-table td.sym-col {
+  color: #1e3566;
+  font-weight: 800;
+  font-size: 13px;
+}
+
+/* All 5 rank-able columns: bold */
+.tx-table td.rank-col {
+  font-weight: 700;
+}
+
+/* Bought Balance: warm muted terracotta (matches Table tab theme) */
+.tx-table td.rank-bought {
+  color: var(--refresh-btn-em);
+}
+
+/* Current Value: cool muted slate (matches Analysis tab theme) */
+.tx-table td.rank-current {
+  color: var(--analysis-accent);
+}
+
+/* Bought % / Current %: bold + slightly larger for emphasis */
+.tx-table td.rank-pct {
+  font-size: 13px;
 }

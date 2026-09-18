@@ -22,15 +22,25 @@ async function call(action, data = {}) {
 }
 
 export const api = {
-  getAccounts: () => call("get_all_accounts"),
-  getTransactions: (accountIds = null) =>
-    call("get_transactions", accountIds ? { account_ids: accountIds } : {}),
-  syncActivities: () => call("update_all_activities"),
+  // Initial load: accounts + transactions + analysis + last_fetched in one shot
+  onPageLoad: () => call("on_page_load"),
+
+  // Sync flow: update accounts, then per-account activities, then full tx refresh
+  updateAndGetAccounts: () => call("update_and_get_accounts"),
+  updateActivitiesByAccount: (account_id) =>
+    call("update_activities_by_account", { account_id }),
+  getTransactions: () => call("get_transactions", {}),
+
+  // Per-symbol: returns transactions for that account_id directly
   refreshOrders: (account_id) =>
-    call("update_orders_by_account", { account_id }),
+    call("update_orders_and_get_transactions_by_account", { account_id }),
+
+  // Per-account: returns full analysis array directly
   refreshPositions: (account_id) =>
-    call("update_positions_by_account", { account_id }),
-  getAnalysis: () => call("get_analysis"),
+    call("update_positions_and_get_analysis", { account_id }),
+
+  getAccounts: () => call("get_all_accounts"),
+
   updateNickname: (account_id, nickname) =>
     call("update_nickname", { account_id, nickname }),
 };

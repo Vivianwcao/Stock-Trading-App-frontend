@@ -34,28 +34,32 @@ export default function AnalysisTable({ t, rows, rankCol }) {
         <tbody>
           {sorted.map((row, i) => (
             <tr key={i}>
-              <td>
+              <td className="sym-col">
                 <strong>{row.symbol}</strong>
               </td>
               <td className="num">{fmtUnits(row.holdings)}</td>
               <td className="num">{fmtPrice(row.cost_basis)}</td>
               <td className="num">{fmtPrice(row.current_price)}</td>
               <td
-                className={`num ${
+                className={`num rank-col ${
                   row.growth_percentage > 0 ? "pos"
                   : row.growth_percentage < 0 ? "neg"
                   : ""
                 }`}>
                 {fmtPct(row.growth_percentage)}
               </td>
-              <td className="num">{fmtCAD(row.bought_balance)}</td>
+              <td className="num rank-col rank-bought">
+                {fmtCAD(row.bought_balance)}
+              </td>
               <td className="num">{fmtCAD(row.total_bought)}</td>
-              <td className="num">
+              <td className="num rank-col rank-pct">
                 {row.bought_ratio != null ? `${row.bought_ratio}%` : "-"}
               </td>
-              <td className="num">{fmtCAD(row.current_balance)}</td>
+              <td className="num rank-col rank-current">
+                {fmtCAD(row.current_balance)}
+              </td>
               <td className="num">{fmtCAD(row.total_current)}</td>
-              <td className="num">
+              <td className="num rank-col rank-pct">
                 {row.current_ratio != null ? `${row.current_ratio}%` : "-"}
               </td>
               <td className="num">

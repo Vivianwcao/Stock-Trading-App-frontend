@@ -1,17 +1,19 @@
 export const fmtCAD = (n) => {
   if (n == null) return "-";
-  return new Intl.NumberFormat("en-CA", {
+  const s = new Intl.NumberFormat("en-CA", {
     style: "currency",
     currency: "CAD",
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
     useGrouping: false,
   }).format(n);
+  // thin space (U+2009) between $ and digits for legibility
+  return s.replace(/\$(?=[\d\-])/, "$ ");
 };
 
 export const fmtPrice = (n, decimals = 4) => {
   if (n == null) return "-";
-  return `$${Number(n).toFixed(decimals)}`;
+  return `$ ${Number(n).toFixed(decimals)}`;
 };
 
 export const fmtUnits = (n) => {

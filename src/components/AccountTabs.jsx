@@ -32,16 +32,16 @@ export default function AccountTabs({
   t,
   accounts,
   grouped,
-  accountsBalance,
   lastFetched,
   lang,
   setLang,
   syncStatus,
   syncing,
   onSync,
-  onRefresh,
   analysis,
-  onReloadAnalysis,
+  onSetAnalysis,
+  onMergeTransactions,
+  onUpdateLastFetched,
 }) {
   const [activeNick, setActiveNick] = useState(
     () => accounts[0]?.nickname || null,
@@ -91,14 +91,16 @@ export default function AccountTabs({
     [analysis, activeNick],
   );
 
-  // Most recent activities fetch timestamp (across all accounts)
+  // Most recent activities fetch for the active account specifically
   const actLastFetched = useMemo(() => {
-    const entries = lastFetched.filter((r) => r.api_source === "activities");
-    if (!entries.length) return null;
-    return entries.reduce((best, r) =>
-      r.fetched_at > best.fetched_at ? r : best,
-    ).fetched_at;
-  }, [lastFetched]);
+    if (!activeAccount?.id) return null;
+    return (
+      lastFetched.find(
+        (r) =>
+          r.api_source === "activities" && r.account_id === activeAccount.id,
+      )?.fetched_at || null
+    );
+  }, [lastFetched, activeAccount]);
 
   // Most recent orders fetch for the active account
   const ordLastFetched = useMemo(() => {
@@ -131,8 +133,19 @@ export default function AccountTabs({
     try {
       const res = await api.refreshOrders(activeAccount.id);
       setOrderStatus(res);
-      if (res.status === "success" && (res.data?.rows_updated ?? 0) > 0) {
-        await onRefresh(activeAccount.id);
+      if (res.status === "success") {
+        // Transactions are returned directly — merge by account_id
+        const freshTxns = res.data?.transactions || [];
+        if (freshTxns.length > 0) {
+          onMergeTransactions(activeAccount.id, freshTxns);
+        }
+        // fetched_at from backend is the activities timestamp for this account
+        const ft = res.data?.fetched_at;
+        const timestamp =
+          ft?.fetched_at ?? (typeof ft === "string" ? ft : null);
+        if (timestamp) {
+          onUpdateLastFetched("activities", activeAccount.id, timestamp);
+        }
       }
     } catch (e) {
       setOrderStatus({ status: "fail", error: e.message });
@@ -148,7 +161,8 @@ export default function AccountTabs({
       const res = await api.refreshPositions(activeAccount.id);
       setPositionStatus(res);
       if (res.status === "success") {
-        await onReloadAnalysis();
+        // Analysis rows returned directly
+        onSetAnalysis(res.data || []);
       }
     } catch (e) {
       setPositionStatus({ status: "fail", error: e.message });
@@ -158,7 +172,7 @@ export default function AccountTabs({
   };
 
   const renderSyncStatus = () => {
-    if (syncing) return <span className="sync-msg syncing">{t.syncing}</span>;
+    if (syncing && !syncStatus) return <span className="sync-msg syncing">{t.syncing}</span>;
     if (!syncStatus) return null;
     if (syncStatus.status === "success") {
       const msg =
@@ -268,12 +282,12 @@ export default function AccountTabs({
         {/* Sub-tabs: Table | Analysis */}
         <div className="sub-tabs">
           <button
-            className={`sub-tab ${activeSubTab === "table" ? "active" : ""}`}
+            className={`sub-tab table-tab ${activeSubTab === "table" ? "active" : ""}`}
             onClick={() => setActiveSubTab("table")}>
             {t.tabTable}
           </button>
           <button
-            className={`sub-tab ${activeSubTab === "analysis" ? "active" : ""}`}
+            className={`sub-tab analysis-tab ${activeSubTab === "analysis" ? "active" : ""}`}
             onClick={() => setActiveSubTab("analysis")}>
             {t.tabAnalysis}
           </button>
@@ -376,10 +390,12 @@ export default function AccountTabs({
           <div className="analysis-controls">
             <div className="analysis-refresh">
               <button
-                className="btn btn-primary"
+                className="btn btn-analysis"
                 onClick={refreshPositions}
                 disabled={positionsRefreshing}>
-                {positionsRefreshing ? t.refreshing : t.refreshPositions}
+                {positionsRefreshing ?
+                  t.refreshing
+                : `${t.refreshPositions}: ${activeNick}`}
               </button>
               <div className="sync-status" style={{ marginTop: "4px" }}>
                 {renderPositionStatus()}

@@ -817,7 +817,7 @@
 
 /* Current Value: cool muted slate (matches Analysis tab theme) */
 .tx-table td.rank-current {
-  color: var(--analysis-accent-em);
+  color: var(--buy);
 }
 
 /* Bought % / Current % */

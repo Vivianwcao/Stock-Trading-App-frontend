@@ -43,6 +43,8 @@ export default function AccountTabs({
   onMergeTransactions,
   onUpdateLastFetched,
 }) {
+  const [utilityWidth, setUtilityWidth] = useState(270);
+
   const [activeNick, setActiveNick] = useState(
     () => accounts[0]?.nickname || null,
   );
@@ -144,7 +146,7 @@ export default function AccountTabs({
         const timestamp =
           ft?.fetched_at ?? (typeof ft === "string" ? ft : null);
         if (timestamp) {
-          onUpdateLastFetched("orders", activeAccount.id, timestamp);
+          onUpdateLastFetched("activities", activeAccount.id, timestamp);
         }
       }
     } catch (e) {
@@ -244,6 +246,26 @@ export default function AccountTabs({
   // last_successful_sync from the positions data for this account
   const positionsLastSync = analysisRows[0]?.last_successful_sync ?? null;
 
+  const handleDividerMouseDown = (e) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = utilityWidth;
+    const onMouseMove = (ev) => {
+      const delta = startX - ev.clientX; // drag left → wider utility (narrower table)
+      setUtilityWidth(Math.max(200, Math.min(480, startWidth + delta)));
+    };
+    const onMouseUp = () => {
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+      document.body.style.userSelect = "";
+      document.body.style.cursor = "";
+    };
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = "col-resize";
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+  };
+
   return (
     <div className="app-columns">
       {/* ── LEFT: account tabs + sub-tabs + content ── */}
@@ -302,8 +324,11 @@ export default function AccountTabs({
         : <AnalysisTable t={t} rows={analysisRows} rankCol={rankCol} />}
       </div>
 
+      {/* ── DIVIDER ── */}
+      <div className="col-divider" onMouseDown={handleDividerMouseDown} />
+
       {/* ── RIGHT: utility panel (content changes per sub-tab) ── */}
-      <div className="col-utility">
+      <div className="col-utility" style={{ width: utilityWidth }}>
         {/* Sync button + language toggle (always visible) */}
         <div className="utility-top">
           <div className="utility-controls">
@@ -393,7 +418,7 @@ export default function AccountTabs({
                   t.refreshing
                 : `${t.refreshPositions}: ${activeNick}`}
               </button>
-              <div className="sync-status">
+              <div className="sync-status" style={{ marginTop: "4px" }}>
                 {renderPositionStatus()}
                 {positionsLastSync && !positionsRefreshing && (
                   <span className="last-fetch-line">

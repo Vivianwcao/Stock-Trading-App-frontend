@@ -78,13 +78,24 @@
   gap: 8px;
 }
 
+/* Drag handle between left and right panels */
+.col-divider {
+  width: 5px;
+  flex-shrink: 0;
+  background: var(--border);
+  cursor: col-resize;
+  transition: background 0.15s;
+}
+.col-divider:hover {
+  background: var(--primary);
+}
+
 /* Right: sync controls + symbol tabs + calculator */
 .col-utility {
-  width: 270px;
+  /* width is now controlled by inline style (draggable); min/max enforced in JS */
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  border-left: 1px solid var(--border);
   padding: 8px 10px;
   gap: 8px;
   overflow-y: auto;

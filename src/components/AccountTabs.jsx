@@ -23,8 +23,6 @@ function getToday() {
 const RANK_OPTIONS = [
   { key: "bought_ratio_rnk", labelKey: "rankBoughtRatio" },
   { key: "current_ratio_rnk", labelKey: "rankCurrentRatio" },
-  { key: "bought_balance_rnk", labelKey: "rankBoughtBalance" },
-  { key: "current_balance_rnk", labelKey: "rankCurrentBalance" },
   { key: "growth_percentage_rnk", labelKey: "rankGrowth" },
   { key: "cost_basis", labelKey: "rankCostBasis" },
 ];
@@ -381,18 +379,23 @@ export default function AccountTabs({
           })}
         </div>
 
-        {/* Sub-tabs: Table | Analysis */}
-        <div className="sub-tabs">
-          <button
-            className={`sub-tab table-tab ${activeSubTab === "table" ? "active" : ""}`}
-            onClick={() => setActiveSubTab("table")}>
-            {t.tabTable}
-          </button>
-          <button
-            className={`sub-tab analysis-tab ${activeSubTab === "analysis" ? "active" : ""}`}
-            onClick={() => setActiveSubTab("analysis")}>
-            {t.tabAnalysis}
-          </button>
+        {/* Sub-tabs: Table | Analysis + active symbol label */}
+        <div className="sub-tabs-row">
+          <div className="sub-tabs">
+            <button
+              className={`sub-tab table-tab ${activeSubTab === "table" ? "active" : ""}`}
+              onClick={() => setActiveSubTab("table")}>
+              {t.tabTable}
+            </button>
+            <button
+              className={`sub-tab analysis-tab ${activeSubTab === "analysis" ? "active" : ""}`}
+              onClick={() => setActiveSubTab("analysis")}>
+              {t.tabAnalysis}
+            </button>
+          </div>
+          {activeSubTab === "table" && currentSym && (
+            <span className="subtab-active-sym">{currentSym}</span>
+          )}
         </div>
 
         {/* Content area */}

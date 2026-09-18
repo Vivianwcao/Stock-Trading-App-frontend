@@ -7,10 +7,10 @@ import {
   fmtVancouver,
 } from "../utils/format";
 
-// avg_bought_price is always positive in the DB (SQL uses abs())
+// avg_cost is always positive in the DB (SQL uses abs())
 function getAvgCost(lastRow) {
-  if (!lastRow || lastRow.avg_bought_price == null) return null;
-  return lastRow.avg_bought_price;
+  if (!lastRow || lastRow.avg_cost == null) return null;
+  return lastRow.avg_cost;
 }
 
 // BUY: newAvgCost = (prevAvgCost * prevHoldings + price * units) / newHoldings
@@ -69,7 +69,7 @@ export default function Calculator({
 
   const avgCost = getAvgCost(lastRow);
   const currentHoldings = lastRow?.holdings_per_cycle ?? 0;
-  const boughtBalance = lastRow?.bought_balance ?? 0;
+  const boughtBalance = lastRow?.cost ?? 0;
 
   const handleCalculate = () => {
     setErr("");

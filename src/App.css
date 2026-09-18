@@ -904,3 +904,23 @@
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
+/* Sub-tabs row: tabs + active symbol label */
+.sub-tabs-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 2px solid var(--border);
+}
+
+.sub-tabs-row .sub-tabs {
+  border-bottom: none; /* border is on the row now */
+}
+
+.subtab-active-sym {
+  font-weight: 700;
+  font-size: 14px;
+  color: #000;
+  letter-spacing: 0.04em;
+  padding: 0 4px;
+  opacity: 0.9;
+}

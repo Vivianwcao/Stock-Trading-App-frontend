@@ -22,7 +22,7 @@ export default function AnalysisTable({ t, rows, rankCol }) {
             <th className="num">{t.costBasis}</th>
             <th className="num">{t.currentPrice}</th>
             <th className="num">{t.growthPct}</th>
-            <th className="num">{t.boughtBalance}</th>
+            <th className="num">{t.positionCost}</th>
             <th className="num">{t.boughtRatio}</th>
             <th className="num">{t.currentBalance}</th>
             <th className="num">{t.currentRatio}</th>
@@ -46,14 +46,12 @@ export default function AnalysisTable({ t, rows, rankCol }) {
                 }`}>
                 {fmtPct(row.growth_percentage)}
               </td>
-              <td className="num rank-col rank-bought">
-                {fmtCAD(row.bought_balance)}
-              </td>
+              <td className="num rank-col rank-bought">{fmtCAD(row.cost)}</td>
               <td className="num rank-col rank-pct">
                 {row.bought_ratio != null ? `${row.bought_ratio}%` : "-"}
               </td>
               <td className="num rank-col rank-current">
-                {fmtCAD(row.current_balance)}
+                {fmtCAD(row.current_value)}
               </td>
               <td className="num rank-col rank-pct">
                 {row.current_ratio != null ? `${row.current_ratio}%` : "-"}

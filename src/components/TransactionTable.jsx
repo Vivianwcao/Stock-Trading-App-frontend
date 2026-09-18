@@ -44,17 +44,17 @@ function RealRow({ row, today }) {
         {fmtCAD(row.amount)}
       </td>
       <td className="num">{fmtUnits(row.holdings_per_cycle)}</td>
-      <td className="num col-em">{fmtPrice(row.avg_bought_price)}</td>
+      <td className="num col-em">{fmtPrice(row.avg_cost)}</td>
       <td className="num">
         {row.dividend_balance != null ? fmtCAD(row.dividend_balance) : "-"}
       </td>
       <td
         className={`num ${
-          row.bought_balance < 0 ? "neg"
-          : row.bought_balance > 0 ? "pos"
+          row.cost < 0 ? "neg"
+          : row.cost > 0 ? "pos"
           : ""
         }`}>
-        {row.bought_balance != null ? fmtCAD(row.bought_balance) : "-"}
+        {row.cost != null ? fmtCAD(row.cost) : "-"}
       </td>
       <td
         className={`num col-em ${

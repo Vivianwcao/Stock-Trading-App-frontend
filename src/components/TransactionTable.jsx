@@ -43,10 +43,18 @@ function RealRow({ row, today }) {
       <td className={`num ${row.amount < 0 ? "neg" : "pos"}`}>
         {fmtCAD(row.amount)}
       </td>
-      <td className="num">{fmtUnits(row.rolling_units)}</td>
+      <td className="num">{fmtUnits(row.holdings_per_cycle)}</td>
       <td className="num">{fmtPrice(row.avg_bought_price)}</td>
       <td className="num">
         {row.dividend_balance != null ? fmtCAD(row.dividend_balance) : "-"}
+      </td>
+      <td
+        className={`num ${
+          row.bought_balance < 0 ? "neg"
+          : row.bought_balance > 0 ? "pos"
+          : ""
+        }`}>
+        {row.bought_balance != null ? fmtCAD(row.bought_balance) : "-"}
       </td>
       <td
         className={`num ${
@@ -63,14 +71,6 @@ function RealRow({ row, today }) {
           : ""
         }`}>
         {fmtPct(row.return_percentage)}
-      </td>
-      <td
-        className={`num ${
-          row.trading_balance < 0 ? "neg"
-          : row.trading_balance > 0 ? "pos"
-          : ""
-        }`}>
-        {row.trading_balance != null ? fmtCAD(row.trading_balance) : "-"}
       </td>
     </tr>
   );
@@ -98,6 +98,14 @@ function HypRow({ row }) {
       <td className="num">-</td>
       <td
         className={`num ${
+          row.newBoughtBalance < 0 ? "neg"
+          : row.newBoughtBalance > 0 ? "pos"
+          : ""
+        }`}>
+        {row.newBoughtBalance != null ? fmtCAD(row.newBoughtBalance) : "-"}
+      </td>
+      <td
+        className={`num ${
           row.projectedPL > 0 ? "pos"
           : row.projectedPL < 0 ? "neg"
           : ""
@@ -111,14 +119,6 @@ function HypRow({ row }) {
           : ""
         }`}>
         {row.projectedReturn != null ? fmtPct(row.projectedReturn) : "-"}
-      </td>
-      <td
-        className={`num ${
-          row.trading_balance < 0 ? "neg"
-          : row.trading_balance > 0 ? "pos"
-          : ""
-        }`}>
-        {row.trading_balance != null ? fmtCAD(row.trading_balance) : "-"}
       </td>
     </tr>
   );
@@ -142,9 +142,9 @@ export default function TransactionTable({ t, rows, hypothetical = null }) {
             <th className="num">{t.holdings}</th>
             <th className="num">{t.avgCost}</th>
             <th className="num">{t.dividends}</th>
+            <th className="num">{t.boughtBalance}</th>
             <th className="num">{t.realizedPL}</th>
             <th className="num">{t.returnPct}</th>
-            <th className="num">{t.tradingBalance}</th>
           </tr>
         </thead>
         <tbody>

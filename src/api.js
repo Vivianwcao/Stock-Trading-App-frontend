@@ -28,6 +28,9 @@ export const api = {
   syncActivities: () => call("update_all_activities"),
   refreshOrders: (account_id) =>
     call("update_orders_by_account", { account_id }),
+  refreshPositions: (account_id) =>
+    call("update_positions_by_account", { account_id }),
+  getAnalysis: () => call("get_analysis"),
   updateNickname: (account_id, nickname) =>
     call("update_nickname", { account_id, nickname }),
 };

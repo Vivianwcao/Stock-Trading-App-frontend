@@ -1,12 +1,12 @@
-import { useState, useMemo } from 'react';
-import { api } from '../api';
-import TransactionTable from './TransactionTable';
-import Calculator from './Calculator';
+import { useState, useMemo } from "react";
+import { api } from "../api";
+import TransactionTable from "./TransactionTable";
+import Calculator from "./Calculator";
 
 // Find the most recent BUY or SELL date for a symbol's rows (already sorted asc)
 function getLatestTradeDate(rows) {
   for (let i = rows.length - 1; i >= 0; i--) {
-    if (rows[i].type === 'BUY' || rows[i].type === 'SELL') {
+    if (rows[i].type === "BUY" || rows[i].type === "SELL") {
       return rows[i].trade_date;
     }
   }
@@ -44,13 +44,14 @@ export default function StockPanel({ t, nickname, accountId, symbols }) {
       const res = await api.refreshOrders(accountId);
       setOrderStatus(res);
     } catch (e) {
-      setOrderStatus({ status: 'fail', error: e.message });
+      setOrderStatus({ status: "fail", error: e.message });
     } finally {
       setRefreshing(false);
     }
   };
 
-  if (!symbolList.length) return <div className="status-msg">{t.noSymbols}</div>;
+  if (!symbolList.length)
+    return <div className="status-msg">{t.noSymbols}</div>;
 
   // Guard: active symbol may not exist after account switch (remount handles it, but be safe)
   const currentSym = symbolList.includes(activeSym) ? activeSym : symbolList[0];
@@ -65,13 +66,10 @@ export default function StockPanel({ t, nickname, accountId, symbols }) {
     return (
       <button
         key={sym}
-        className={`stock-tab ${sym === currentSym ? 'active' : ''} ${!isHeld ? 'closed' : ''}`}
-        onClick={() => setActiveSym(sym)}
-      >
+        className={`stock-tab ${sym === currentSym ? "active" : ""} ${!isHeld ? "closed" : ""}`}
+        onClick={() => setActiveSym(sym)}>
         {sym}
-        {isHeld && (
-          <span className="units-badge">{last.rolling_units}</span>
-        )}
+        {isHeld && <span className="units-badge">{last.rolling_units}</span>}
       </button>
     );
   });
@@ -81,11 +79,7 @@ export default function StockPanel({ t, nickname, accountId, symbols }) {
       <div className="content-columns">
         {/* Left: transaction table fills available height */}
         <div className="col-left">
-          <TransactionTable
-            t={t}
-            rows={rows}
-            hypothetical={currentHyp}
-          />
+          <TransactionTable t={t} rows={rows} hypothetical={currentHyp} />
         </div>
 
         {/* Right: symbol tabs + calculator */}

@@ -3,6 +3,7 @@ import { api } from "../api";
 import { fmtBalance, fmtVancouver } from "../utils/format";
 import TransactionTable from "./TransactionTable";
 import Calculator from "./Calculator";
+import AnalysisTable from "./AnalysisTable";
 
 function getLatestTradeDate(rows) {
   for (let i = rows.length - 1; i >= 0; i--) {
@@ -19,6 +20,14 @@ function getToday() {
   }).format(new Date());
 }
 
+const RANK_OPTIONS = [
+  { key: "bought_ratio_rnk", labelKey: "rankBoughtRatio" },
+  { key: "current_ratio_rnk", labelKey: "rankCurrentRatio" },
+  { key: "bought_balance_rnk", labelKey: "rankBoughtBalance" },
+  { key: "current_balance_rnk", labelKey: "rankCurrentBalance" },
+  { key: "growth_percentage_rnk", labelKey: "rankGrowth" },
+];
+
 export default function AccountTabs({
   t,
   accounts,
@@ -31,6 +40,8 @@ export default function AccountTabs({
   syncing,
   onSync,
   onRefresh,
+  analysis,
+  onReloadAnalysis,
 }) {
   const [activeNick, setActiveNick] = useState(
     () => accounts[0]?.nickname || null,
@@ -39,6 +50,10 @@ export default function AccountTabs({
   const [hypotheticals, setHypotheticals] = useState({});
   const [orderStatus, setOrderStatus] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [activeSubTab, setActiveSubTab] = useState("table");
+  const [positionsRefreshing, setPositionsRefreshing] = useState(false);
+  const [positionStatus, setPositionStatus] = useState(null);
+  const [rankCol, setRankCol] = useState("bought_ratio_rnk");
 
   // Reset per-account state when switching accounts (skip initial mount)
   const isInitialMount = useRef(true);
@@ -51,6 +66,9 @@ export default function AccountTabs({
     setHypotheticals({});
     setOrderStatus(null);
     setRefreshing(false);
+    setActiveSubTab("table");
+    setPositionStatus(null);
+    setPositionsRefreshing(false);
   }, [activeNick]);
 
   const activeAccount = accounts.find((a) => a.nickname === activeNick);
@@ -67,14 +85,11 @@ export default function AccountTabs({
     });
   }, [symbols]);
 
-  // nickname → net cash flow balance
-  const balanceByNickname = useMemo(() => {
-    const map = {};
-    for (const entry of accountsBalance) {
-      map[entry.nickname] = entry.balance;
-    }
-    return map;
-  }, [accountsBalance]);
+  // Analysis rows filtered to the active account
+  const analysisRows = useMemo(
+    () => analysis.filter((r) => r.nickname === activeNick),
+    [analysis, activeNick],
+  );
 
   // Most recent activities fetch timestamp (across all accounts)
   const actLastFetched = useMemo(() => {
@@ -126,6 +141,22 @@ export default function AccountTabs({
     }
   };
 
+  const refreshPositions = async () => {
+    if (!activeAccount?.id) return;
+    setPositionsRefreshing(true);
+    try {
+      const res = await api.refreshPositions(activeAccount.id);
+      setPositionStatus(res);
+      if (res.status === "success") {
+        await onReloadAnalysis();
+      }
+    } catch (e) {
+      setPositionStatus({ status: "fail", error: e.message });
+    } finally {
+      setPositionsRefreshing(false);
+    }
+  };
+
   const renderSyncStatus = () => {
     if (syncing) return <span className="sync-msg syncing">{t.syncing}</span>;
     if (!syncStatus) return null;
@@ -172,10 +203,37 @@ export default function AccountTabs({
     return null;
   };
 
+  const renderPositionStatus = () => {
+    if (positionsRefreshing)
+      return <span className="sync-msg syncing">{t.refreshing}</span>;
+    if (!positionStatus) return null;
+    if (positionStatus.status === "success")
+      return <span className="sync-msg ok">{t.positionsSynced}</span>;
+    if (positionStatus.status === "cooldown") {
+      const {
+        hours: h = 0,
+        minutes: m = 0,
+        seconds: s = 0,
+      } = positionStatus.data || {};
+      return (
+        <span className="sync-msg cooldown">
+          {t.positionsCooldown(h, m, s)}
+        </span>
+      );
+    }
+    if (positionStatus.status === "fail")
+      return <span className="sync-msg fail">{positionStatus.error}</span>;
+    return null;
+  };
+
+  // last_successful_sync from the positions data for this account
+  const positionsLastSync = analysisRows[0]?.last_successful_sync ?? null;
+
   return (
     <div className="app-columns">
-      {/* ── LEFT: account tabs + transaction table ── */}
+      {/* ── LEFT: account tabs + sub-tabs + content ── */}
       <div className="col-accounts">
+        {/* Account tabs */}
         <div className="account-tabs">
           {accounts.map((acc) => {
             const accSymbols = grouped[acc.nickname] || {};
@@ -207,14 +265,35 @@ export default function AccountTabs({
           })}
         </div>
 
-        {symbolList.length === 0 ?
-          <div className="status-msg">{t.noSymbols}</div>
-        : <TransactionTable t={t} rows={rows} hypothetical={currentHyp} />}
+        {/* Sub-tabs: Table | Analysis */}
+        <div className="sub-tabs">
+          <button
+            className={`sub-tab ${activeSubTab === "table" ? "active" : ""}`}
+            onClick={() => setActiveSubTab("table")}>
+            {t.tabTable}
+          </button>
+          <button
+            className={`sub-tab ${activeSubTab === "analysis" ? "active" : ""}`}
+            onClick={() => setActiveSubTab("analysis")}>
+            {t.tabAnalysis}
+          </button>
+        </div>
+
+        {/* Content area */}
+        {activeSubTab === "table" ? (
+          symbolList.length === 0 ? (
+            <div className="status-msg">{t.noSymbols}</div>
+          ) : (
+            <TransactionTable t={t} rows={rows} hypothetical={currentHyp} />
+          )
+        ) : (
+          <AnalysisTable t={t} rows={analysisRows} rankCol={rankCol} />
+        )}
       </div>
 
-      {/* ── RIGHT: sync controls + symbol tabs + calculator ── */}
+      {/* ── RIGHT: utility panel (content changes per sub-tab) ── */}
       <div className="col-utility">
-        {/* Sync button + language toggle */}
+        {/* Sync button + language toggle (always visible) */}
         <div className="utility-top">
           <div className="utility-controls">
             <button
@@ -247,47 +326,83 @@ export default function AccountTabs({
           </div>
         </div>
 
-        {/* Symbol tabs */}
-        <div className="symbol-tabs-area">
-          <div className="stock-tabs">
-            {symbolList.map((sym) => {
-              const symRows = symbols[sym];
-              const last = symRows[symRows.length - 1];
-              const isHeld = last && last.rolling_units > 0;
-              const hasToday = symRows.some(
-                (r) => r.trade_date?.slice(0, 10) === today,
-              );
-              return (
-                <button
-                  key={sym}
-                  className={`stock-tab ${sym === currentSym ? "active" : ""} ${!isHeld ? "closed" : ""} ${hasToday ? "tab-today" : ""}`}
-                  onClick={() => setActiveSym(sym)}>
-                  {sym}
-                  {isHeld && (
-                    <span className="units-badge">{last.rolling_units}</span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        {activeSubTab === "table" ? (
+          <>
+            {/* Symbol tabs */}
+            <div className="symbol-tabs-area">
+              <div className="stock-tabs">
+                {symbolList.map((sym) => {
+                  const symRows = symbols[sym];
+                  const last = symRows[symRows.length - 1];
+                  const isHeld = last && last.holdings_per_cycle > 0;
+                  const hasToday = symRows.some(
+                    (r) => r.trade_date?.slice(0, 10) === today,
+                  );
+                  return (
+                    <button
+                      key={sym}
+                      className={`stock-tab ${sym === currentSym ? "active" : ""} ${!isHeld ? "closed" : ""} ${hasToday ? "tab-today" : ""}`}
+                      onClick={() => setActiveSym(sym)}>
+                      {sym}
+                      {isHeld && (
+                        <span className="units-badge">
+                          {last.holdings_per_cycle}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
-        {/* Calculator */}
-        {currentSym && (
-          <Calculator
-            t={t}
-            symbol={currentSym}
-            lastRow={lastRow}
-            accountBalance={balanceByNickname[activeNick] ?? null}
-            ordersLastFetched={ordLastFetched}
-            onCalculate={(row) => setHypothetical(currentSym, row)}
-            onClear={() => setHypothetical(currentSym, null)}
-            hasHypothetical={currentHyp !== null}
-            onRefreshOrders={refreshOrders}
-            refreshing={refreshing}
-            orderStatus={orderStatus}
-            renderOrderStatus={renderOrderStatus}
-          />
+            {/* Calculator */}
+            {currentSym && (
+              <Calculator
+                t={t}
+                symbol={currentSym}
+                lastRow={lastRow}
+                ordersLastFetched={ordLastFetched}
+                onCalculate={(row) => setHypothetical(currentSym, row)}
+                onClear={() => setHypothetical(currentSym, null)}
+                hasHypothetical={currentHyp !== null}
+                onRefreshOrders={refreshOrders}
+                refreshing={refreshing}
+                renderOrderStatus={renderOrderStatus}
+              />
+            )}
+          </>
+        ) : (
+          /* Analysis mode: Refresh Positions + rank selector */
+          <div className="analysis-controls">
+            <div className="analysis-refresh">
+              <button
+                className="btn btn-primary"
+                onClick={refreshPositions}
+                disabled={positionsRefreshing}>
+                {positionsRefreshing ? t.refreshing : t.refreshPositions}
+              </button>
+              <div className="sync-status" style={{ marginTop: "4px" }}>
+                {renderPositionStatus()}
+                {positionsLastSync && !positionsRefreshing && (
+                  <span className="last-fetch-line">
+                    {t.lastPositionsSync}: {fmtVancouver(positionsLastSync)}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="rank-selector">
+              <span className="rank-label">{t.rankBy}</span>
+              {RANK_OPTIONS.map((opt) => (
+                <button
+                  key={opt.key}
+                  className={`rank-btn ${rankCol === opt.key ? "active" : ""}`}
+                  onClick={() => setRankCol(opt.key)}>
+                  {t[opt.labelKey]}
+                </button>
+              ))}
+            </div>
+          </div>
         )}
       </div>
     </div>

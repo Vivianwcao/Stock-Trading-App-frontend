@@ -7,26 +7,33 @@ import {
   fmtVancouver,
 } from "../utils/format";
 
-// avg_bought_price in the DB is negative - use Math.abs() throughout
-function getAbsAvgCost(lastRow) {
+// avg_bought_price is always positive in the DB (SQL uses abs())
+function getAvgCost(lastRow) {
   if (!lastRow || lastRow.avg_bought_price == null) return null;
-  return Math.abs(lastRow.avg_bought_price);
+  return lastRow.avg_bought_price;
 }
 
-function computeBuy(avgCost, currentHoldings, price, units) {
+// BUY: newAvgCost = (prevAvgCost * prevHoldings + price * units) / newHoldings
+// bought_balance decreases (more negative) by the purchase amount
+function computeBuy(avgCost, currentHoldings, boughtBalance, price, units) {
   const newHoldings = currentHoldings + units;
   const newInvested = avgCost * currentHoldings + price * units;
   const newAvgCost = newHoldings > 0 ? newInvested / newHoldings : 0;
+  const amount = -(price * units); // negative: money out
   return {
     newHoldings,
-    newAvgCost: newHoldings > 0 ? -(newInvested / newHoldings) : 0,
+    newAvgCost,
     projectedPL: null,
     projectedReturn: null,
-    amount: -(price * units),
+    amount,
+    newBoughtBalance: boughtBalance + amount,
   };
 }
 
-function computeSell(avgCost, currentHoldings, price, units) {
+// SELL: avgCost stays the same; bought_balance reduces by cost basis of sold units
+// DB formula: bought_balance - avg_bought_price * units (units is negative in DB, so this adds back)
+// Here units is the positive user input, so: boughtBalance + avgCost * units
+function computeSell(avgCost, currentHoldings, boughtBalance, price, units) {
   const proceeds = price * units;
   const costBasis = avgCost * units;
   const projectedPL = proceeds - costBasis;
@@ -34,10 +41,11 @@ function computeSell(avgCost, currentHoldings, price, units) {
     costBasis > 0 ? (projectedPL / costBasis) * 100 : null;
   return {
     newHoldings: currentHoldings - units,
-    newAvgCost: -avgCost,
+    newAvgCost: avgCost,
     projectedPL,
     projectedReturn,
-    amount: proceeds,
+    amount: proceeds, // positive: money in
+    newBoughtBalance: boughtBalance + avgCost * units,
   };
 }
 
@@ -45,7 +53,6 @@ export default function Calculator({
   t,
   symbol,
   lastRow,
-  accountBalance,
   ordersLastFetched,
   onCalculate,
   onClear,
@@ -60,8 +67,9 @@ export default function Calculator({
   const [preview, setPreview] = useState(null);
   const [err, setErr] = useState("");
 
-  const avgCost = getAbsAvgCost(lastRow);
-  const currentHoldings = lastRow?.rolling_units ?? 0;
+  const avgCost = getAvgCost(lastRow);
+  const currentHoldings = lastRow?.holdings_per_cycle ?? 0;
+  const boughtBalance = lastRow?.bought_balance ?? 0;
 
   const handleCalculate = () => {
     setErr("");
@@ -81,15 +89,14 @@ export default function Calculator({
     }
     const result =
       tradeType === "BUY" ?
-        computeBuy(avgCost, currentHoldings, p, u)
-      : computeSell(avgCost, currentHoldings, p, u);
+        computeBuy(avgCost, currentHoldings, boughtBalance, p, u)
+      : computeSell(avgCost, currentHoldings, boughtBalance, p, u);
 
     const row = {
       type: tradeType,
       price: p,
       units: tradeType === "SELL" ? -u : u,
       trade_date: new Date().toISOString().slice(0, 10),
-      trading_balance: (lastRow?.trading_balance ?? 0) + result.amount,
       ...result,
     };
     setPreview(row);
@@ -143,14 +150,6 @@ export default function Calculator({
           <span className="calc-context-label">{t.currentAvgCost}</span>
           <strong>{avgCost != null ? fmtPrice(avgCost) : "-"}</strong>
         </div>
-        {accountBalance != null && (
-          <div className="calc-context-item">
-            <span className="calc-context-label">{t.netCashFlow}</span>
-            <strong className={accountBalance >= 0 ? "pos" : "neg"}>
-              {fmtCAD(accountBalance)}
-            </strong>
-          </div>
-        )}
       </div>
 
       {/* Inputs */}

@@ -313,7 +313,7 @@
   white-space: nowrap;
 }
 
-/* ── Symbol tabs area ─────────────────────────────────────────────────────── */
+/* ── Symbol tabs area — height capped; new sub-tab override below ─────────── */
 .symbol-tabs-area {
   min-height: 80px;
   flex: 1;
@@ -652,4 +652,101 @@
   font-size: 13px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+/* ── Sub-tabs (Table | Analysis) ─────────────────────────────────────────── */
+.sub-tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.sub-tab {
+  padding: 5px 16px;
+  border: 1px solid transparent;
+  border-bottom: none;
+  background: none;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--text-muted);
+  border-radius: 4px 4px 0 0;
+  margin-bottom: -1px;
+  transition: color 0.1s;
+}
+.sub-tab:hover {
+  color: var(--text);
+}
+.sub-tab.active {
+  color: var(--primary);
+  font-weight: 600;
+  background: var(--surface);
+  border-color: var(--border);
+  border-bottom-color: var(--surface);
+}
+
+/* ── Symbol tabs: cap height so calculator gets more room (40/60 split) ── */
+.symbol-tabs-area {
+  min-height: 40px;
+  max-height: 34vh;
+  flex: 0 1 auto;
+  overflow-y: auto;
+}
+
+/* ── Analysis controls (right panel when Analysis sub-tab is active) ──── */
+.analysis-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+}
+
+.analysis-refresh {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* ── Rank selector ────────────────────────────────────────────────────────── */
+.rank-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rank-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-bottom: 2px;
+}
+
+.rank-btn {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 11px;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--text-muted);
+  transition: all 0.1s;
+}
+.rank-btn:hover {
+  color: var(--text);
+  border-color: var(--primary);
+}
+.rank-btn.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+  font-weight: 600;
 }

@@ -11,16 +11,16 @@ export default function App() {
   const [transactions, setTransactions] = useState([]);
   const [accountsBalance, setAccountsBalance] = useState([]);
   const [lastFetched, setLastFetched] = useState([]);
+  const [analysis, setAnalysis] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [syncStatus, setSyncStatus] = useState(null);
   const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
-    Promise.all([loadAccounts(), loadTransactions()])
+    Promise.all([loadAccounts(), loadTransactions(), loadAnalysis()])
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-    // triggerSync(); — removed, user triggers manually
   }, []);
 
   const loadAccounts = async () => {
@@ -35,6 +35,12 @@ export default function App() {
       setAccountsBalance(res.accounts_balance || []);
       setLastFetched(res.last_fetched || []);
     }
+  };
+
+  // get_analysis returns a raw array (no status wrapper)
+  const loadAnalysis = async () => {
+    const res = await api.getAnalysis();
+    setAnalysis(Array.isArray(res) ? res : []);
   };
 
   const refreshAccountTransactions = async (accountId) => {
@@ -116,6 +122,8 @@ export default function App() {
           syncing={syncing}
           onSync={triggerSync}
           onRefresh={refreshAccountTransactions}
+          analysis={analysis}
+          onReloadAnalysis={loadAnalysis}
         />
       }
     </div>

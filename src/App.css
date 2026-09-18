@@ -157,7 +157,7 @@
 }
 .lang-btn.active {
   color: var(--primary);
-  font-weight: 600;
+  font-weight: 900;
 }
 .lang-btn:hover {
   color: var(--text);
@@ -165,11 +165,11 @@
 
 /* ── Buttons ──────────────────────────────────────────────────────────────── */
 .btn {
-  padding: 8px 12px;
+  padding: 6px 12px;
   border: none;
   border-radius: 6px;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: background 0.15s;
   font-family: inherit;
@@ -400,7 +400,7 @@
 .tx-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: 11px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -447,6 +447,11 @@
 }
 .col-date {
   min-width: 88px;
+}
+
+/* Emphasized columns: avg cost, realized P&L, return % */
+.tx-table td.col-em {
+  font-weight: 700;
 }
 
 /* Cycle alternating rows */
@@ -672,10 +677,6 @@
 }
 
 /* ── Sub-tabs (Table | Analysis) ─────────────────────────────────────────── */
-/*
- * Together the two sub-tabs span ~one account tab width (min-width 130px).
- * align-self: flex-start prevents them from stretching to full column width.
- */
 .sub-tabs {
   display: flex;
   gap: 0;
@@ -695,14 +696,14 @@
   margin-bottom: -2px;
   cursor: pointer;
   font-size: 12px;
-  font-weight: 600; /* always bold */
+  font-weight: 600;
   font-family: inherit;
-  color: var(--text); /* same dark as account tab nickname */
+  color: var(--text);
   text-align: center;
-  transition: background 0.1s; /* no color transition — text doesn't change */
+  transition: background 0.1s;
 }
 .sub-tab:hover {
-  background: var(--bg); /* background shifts, text stays */
+  background: var(--bg);
 }
 
 /* Table sub-tab: inactive = light warm tint, active = terracotta */
@@ -816,10 +817,15 @@
 
 /* Current Value: cool muted slate (matches Analysis tab theme) */
 .tx-table td.rank-current {
-  color: var(--analysis-accent);
+  color: var(--analysis-accent-em);
 }
 
-/* Bought % / Current %: bold + slightly larger for emphasis */
+/* Bought % / Current % */
 .tx-table td.rank-pct {
-  font-size: 13px;
+  font-size: 11px;
+}
+
+/* Analysis table: faint alternating row background */
+.analysis-table tbody tr:nth-child(even) {
+  background: rgba(0, 0, 0, 0.03);
 }

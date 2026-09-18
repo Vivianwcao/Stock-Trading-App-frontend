@@ -44,7 +44,7 @@ function RealRow({ row, today }) {
         {fmtCAD(row.amount)}
       </td>
       <td className="num">{fmtUnits(row.holdings_per_cycle)}</td>
-      <td className="num">{fmtPrice(row.avg_bought_price)}</td>
+      <td className="num col-em">{fmtPrice(row.avg_bought_price)}</td>
       <td className="num">
         {row.dividend_balance != null ? fmtCAD(row.dividend_balance) : "-"}
       </td>
@@ -57,7 +57,7 @@ function RealRow({ row, today }) {
         {row.bought_balance != null ? fmtCAD(row.bought_balance) : "-"}
       </td>
       <td
-        className={`num ${
+        className={`num col-em ${
           row.realized_profit > 0 ? "pos"
           : row.realized_profit < 0 ? "neg"
           : ""
@@ -65,7 +65,7 @@ function RealRow({ row, today }) {
         {row.realized_profit != null ? fmtCAD(row.realized_profit) : "-"}
       </td>
       <td
-        className={`num ${
+        className={`num col-em ${
           row.return_percentage > 0 ? "pos"
           : row.return_percentage < 0 ? "neg"
           : ""
@@ -92,7 +92,7 @@ function HypRow({ row }) {
         {fmtCAD(row.amount)}
       </td>
       <td className="num">{fmtUnits(row.newHoldings)}</td>
-      <td className="num">
+      <td className="num col-em">
         {row.newAvgCost != null ? fmtPrice(row.newAvgCost) : "-"}
       </td>
       <td className="num">-</td>
@@ -105,7 +105,7 @@ function HypRow({ row }) {
         {row.newBoughtBalance != null ? fmtCAD(row.newBoughtBalance) : "-"}
       </td>
       <td
-        className={`num ${
+        className={`num col-em ${
           row.projectedPL > 0 ? "pos"
           : row.projectedPL < 0 ? "neg"
           : ""
@@ -113,7 +113,7 @@ function HypRow({ row }) {
         {row.projectedPL != null ? fmtCAD(row.projectedPL) : "-"}
       </td>
       <td
-        className={`num ${
+        className={`num col-em ${
           row.projectedReturn > 0 ? "pos"
           : row.projectedReturn < 0 ? "neg"
           : ""

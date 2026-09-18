@@ -14,7 +14,7 @@ export default function AnalysisTable({ t, rows, rankCol }) {
 
   return (
     <div className="table-wrapper">
-      <table className="tx-table">
+      <table className="tx-table analysis-table">
         <thead>
           <tr>
             <th>{t.symbol}</th>

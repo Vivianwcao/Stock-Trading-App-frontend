@@ -73,16 +73,35 @@ export default function AccountTabs({
   const [viewMode, setViewMode] = useState("latest"); // "latest" | "snapshot"
 
   const isInitialMount = useRef(true);
-  // Cache for snapshot analysis data, keyed by sorted snapshot dates joined with ","
-  // Snapshots are immutable (point-in-time), so caching is safe and avoids re-fetching
+  const prevNickRef = useRef(null);
+  // Network cache: snapshot API responses, keyed by "nickname:date,date,..."
+  // Snapshots are immutable (point-in-time), safe to cache indefinitely, persists across account switches
   const snapshotCacheRef = useRef({});
+  // UI state cache: per-nickname snapshot UI state saved on account switch, restored on return
+  const accountSnapshotStateRef = useRef({});
 
   // Reset per-account UI state when switching accounts (skip initial mount)
   useEffect(() => {
     if (isInitialMount.current) {
       isInitialMount.current = false;
+      prevNickRef.current = activeNick;
       return;
     }
+
+    // Save snapshot UI state for the account we're leaving
+    const prevNick = prevNickRef.current;
+    if (prevNick) {
+      accountSnapshotStateRef.current[prevNick] = {
+        selectedSnapshots,
+        comparisonData,
+        viewMode,
+        showCharts,
+        showAllTriggers,
+      };
+    }
+    prevNickRef.current = activeNick;
+
+    // Always reset non-snapshot state
     setActiveSym(null);
     setHypotheticals({});
     setOrderStatus(null);
@@ -92,13 +111,23 @@ export default function AccountTabs({
     setPositionsRefreshing(false);
     setSyncStatus(null);
     setSyncing(false);
-    setComparisonData([]);
     setComparisonLoading(false);
-    setShowAllTriggers(true);
-    setSelectedSnapshots(new Set());
-    setShowCharts(false);
-    setViewMode("latest");
-    snapshotCacheRef.current = {}; // clear snapshot cache on account switch
+
+    // Restore snapshot UI state if we've visited this account before, otherwise use defaults
+    const saved = accountSnapshotStateRef.current[activeNick];
+    if (saved) {
+      setSelectedSnapshots(saved.selectedSnapshots);
+      setComparisonData(saved.comparisonData);
+      setViewMode(saved.viewMode);
+      setShowCharts(saved.showCharts);
+      setShowAllTriggers(saved.showAllTriggers);
+    } else {
+      setSelectedSnapshots(new Set());
+      setComparisonData([]);
+      setViewMode("latest");
+      setShowCharts(false);
+      setShowAllTriggers(true);
+    }
   }, [activeNick]);
 
   const activeAccount = accounts.find((a) => a.nickname === activeNick);
@@ -275,10 +304,8 @@ export default function AccountTabs({
     setSelectedSnapshots(new Set());
   };
 
-  // Return to cached latest-cycle view
+  // Return to latest-cycle view — keep snapshot selection and data intact
   const handleDefault = () => {
-    setSelectedSnapshots(new Set());
-    setComparisonData([]);
     setViewMode("latest");
     setShowCharts(false);
   };
@@ -287,7 +314,7 @@ export default function AccountTabs({
   const handleAnalyze = async () => {
     if (selectedSnapshots.size === 0) return;
     const selectedArr = [...selectedSnapshots].sort();
-    const cacheKey = selectedArr.join(",");
+    const cacheKey = `${activeNick}:${selectedArr.join(",")}`;
 
     // Snapshots are immutable; serve from cache on repeat access
     if (snapshotCacheRef.current[cacheKey]) {

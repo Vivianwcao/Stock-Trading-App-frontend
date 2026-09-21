@@ -409,7 +409,7 @@
 /* ── Transaction table ────────────────────────────────────────────────────── */
 .table-wrapper {
   overflow-x: auto;
-  overflow-y: auto;
+  overflow-y: auto; /* .content-scroll is now a flex column, so this fills its height and scrolls vertically — sticky th works */
   flex: 1;
   min-height: 0;
   border: 1px solid var(--border);
@@ -1248,4 +1248,6 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }

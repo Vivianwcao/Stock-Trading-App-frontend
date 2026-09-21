@@ -244,7 +244,7 @@ function GrowthChart({ data, t }) {
                 tick={{ fontSize: 11 }}
                 width={48}
               />
-              <Tooltip content={<GrowthTooltip />} />
+              <Tooltip isAnimationActive={false} content={<GrowthTooltip />} />
               <Legend wrapperStyle={{ fontSize: 10, paddingTop: 2 }} />
               {symbols.map((sym) => (
                 <Line
@@ -327,7 +327,10 @@ function AllocationChart({ data, t }) {
                 width={48}
                 domain={[0, 100]}
               />
-              <Tooltip content={<AllocationTooltip />} />
+              <Tooltip
+                isAnimationActive={false}
+                content={<AllocationTooltip />}
+              />
               <Legend wrapperStyle={{ fontSize: 10, paddingTop: 2 }} />
               {symbols.map((sym) => (
                 <Fragment key={sym}>
@@ -448,7 +451,10 @@ function ValueChart({ data, t }) {
                   tick={{ fontSize: 11 }}
                   width={76}
                 />
-                <Tooltip content={<ValueBarTooltip />} />
+                <Tooltip
+                  isAnimationActive={false}
+                  content={<ValueBarTooltip />}
+                />
                 <Legend wrapperStyle={{ fontSize: 10, paddingTop: 2 }} />
                 {/* barSize=14: narrow enough that 35% category gap clearly separates groups */}
                 <Bar dataKey={costLabel} fill="#e15759" barSize={14} />
@@ -505,7 +511,10 @@ function ValueChart({ data, t }) {
                 tick={{ fontSize: 11 }}
                 width={76}
               />
-              <Tooltip content={<ValueLineTooltip colorMap={colorMap} />} />
+              <Tooltip
+                isAnimationActive={false}
+                content={<ValueLineTooltip colorMap={colorMap} />}
+              />
               <Legend wrapperStyle={{ fontSize: 10, paddingTop: 2 }} />
               {symbols.map((sym) => (
                 <Fragment key={sym}>

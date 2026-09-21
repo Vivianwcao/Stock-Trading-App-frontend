@@ -66,12 +66,18 @@ export default function AccountTabs({
 
   // Snapshot comparison state
   const [selectedSnapshots, setSelectedSnapshots] = useState(new Set());
-  const [showAllTriggers, setShowAllTriggers] = useState(false);
+  const [showAllTriggers, setShowAllTriggers] = useState(true);
   const [comparisonData, setComparisonData] = useState([]);
   const [comparisonLoading, setComparisonLoading] = useState(false);
+  const [showCharts, setShowCharts] = useState(false);
+  const [viewMode, setViewMode] = useState("latest"); // "latest" | "snapshot"
+
+  const isInitialMount = useRef(true);
+  // Cache for snapshot analysis data, keyed by sorted snapshot dates joined with ","
+  // Snapshots are immutable (point-in-time), so caching is safe and avoids re-fetching
+  const snapshotCacheRef = useRef({});
 
   // Reset per-account UI state when switching accounts (skip initial mount)
-  const isInitialMount = useRef(true);
   useEffect(() => {
     if (isInitialMount.current) {
       isInitialMount.current = false;
@@ -88,54 +94,12 @@ export default function AccountTabs({
     setSyncing(false);
     setComparisonData([]);
     setComparisonLoading(false);
-    setShowAllTriggers(false);
+    setShowAllTriggers(true);
+    setSelectedSnapshots(new Set());
+    setShowCharts(false);
+    setViewMode("latest");
+    snapshotCacheRef.current = {}; // clear snapshot cache on account switch
   }, [activeNick]);
-
-  // Initialize snapshot selection on account switch (runs on mount + every switch)
-  useEffect(() => {
-    const acc = accounts.find((a) => a.nickname === activeNick);
-    if (!acc) return;
-    const defaultDates = snapshots
-      .filter((r) => r.account_id === acc.id && r.trigger === "scheduled")
-      .sort((a, b) =>
-        b.last_successful_sync.localeCompare(a.last_successful_sync),
-      )
-      .slice(0, DEFAULT_SNAPSHOT_COUNT)
-      .map((r) => r.last_successful_sync);
-    setSelectedSnapshots(new Set(defaultDates));
-  }, [activeNick]); // eslint-disable-line react-hooks/exhaustive-deps
-  // ↑ Intentionally not including snapshots — only reset on account switch.
-  //   After refreshPositions the user's selection is preserved.
-
-  // Auto-fetch comparison data when ≥2 snapshots selected
-  useEffect(() => {
-    if (selectedSnapshots.size < 2) {
-      setComparisonData([]);
-      return;
-    }
-    const acc = accounts.find((a) => a.nickname === activeNick);
-    if (!acc) return;
-
-    let cancelled = false;
-    setComparisonLoading(true);
-    api
-      .compareAnalysisAcrossSnapshots(acc.id, [...selectedSnapshots])
-      .then((res) => {
-        if (cancelled) return;
-        if (res.status === "success") setComparisonData(res.data || []);
-        else setComparisonData([]);
-      })
-      .catch(() => {
-        if (!cancelled) setComparisonData([]);
-      })
-      .finally(() => {
-        if (!cancelled) setComparisonLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedSnapshots, activeNick]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const activeAccount = accounts.find((a) => a.nickname === activeNick);
   const symbols = (activeNick && grouped[activeNick]) || {};
@@ -151,25 +115,40 @@ export default function AccountTabs({
     });
   }, [symbols]);
 
-  // Analysis rows filtered to the active account (by account_id, not nickname)
-  const analysisRows = useMemo(
-    () => analysis.filter((r) => r.account_id === activeAccount?.id),
-    [analysis, activeAccount?.id],
+  // All physical account IDs that belong to the active nickname group
+  const nickAccIds = useMemo(
+    () =>
+      new Set(
+        accounts.filter((a) => a.nickname === activeNick).map((a) => a.id),
+      ),
+    [accounts, activeNick],
   );
 
-  // Snapshot dates for the active account, filtered by trigger toggle
-  const accountSnapshots = useMemo(() => {
-    if (!activeAccount?.id) return [];
-    return snapshots
-      .filter(
-        (r) =>
-          r.account_id === activeAccount.id &&
-          (showAllTriggers || r.trigger === "scheduled"),
-      )
-      .sort((a, b) =>
-        b.last_successful_sync.localeCompare(a.last_successful_sync),
-      );
-  }, [snapshots, activeAccount?.id, showAllTriggers]);
+  // Analysis rows filtered to any physical account in the active nickname group
+  const analysisRows = useMemo(
+    () => analysis.filter((r) => nickAccIds.has(r.account_id)),
+    [analysis, nickAccIds],
+  );
+
+  // All snapshots for this nickname group, sorted newest-first (ignores trigger filter)
+  const allNickSnapshots = useMemo(
+    () =>
+      snapshots
+        .filter((r) => nickAccIds.has(r.account_id))
+        .sort((a, b) =>
+          b.last_successful_sync.localeCompare(a.last_successful_sync),
+        ),
+    [snapshots, nickAccIds],
+  );
+
+  // Snapshots filtered by the trigger toggle (for the visible list)
+  const accountSnapshots = useMemo(
+    () =>
+      allNickSnapshots.filter(
+        (r) => showAllTriggers || r.trigger === "scheduled",
+      ),
+    [allNickSnapshots, showAllTriggers],
+  );
 
   // Most recent activities fetch for the active account specifically
   const actLastFetched = useMemo(() => {
@@ -296,6 +275,63 @@ export default function AccountTabs({
     setSelectedSnapshots(new Set());
   };
 
+  // Return to cached latest-cycle view
+  const handleDefault = () => {
+    setSelectedSnapshots(new Set());
+    setComparisonData([]);
+    setViewMode("latest");
+    setShowCharts(false);
+  };
+
+  // Fetch data for the selected snapshot(s) — serves from in-memory cache when available
+  const handleAnalyze = async () => {
+    if (selectedSnapshots.size === 0) return;
+    const selectedArr = [...selectedSnapshots].sort();
+    const cacheKey = selectedArr.join(",");
+
+    // Snapshots are immutable; serve from cache on repeat access
+    if (snapshotCacheRef.current[cacheKey]) {
+      setComparisonData(snapshotCacheRef.current[cacheKey]);
+      setViewMode("snapshot");
+      if (selectedArr.length > 1) setShowCharts(true);
+      return;
+    }
+
+    const snapshotAccountId =
+      allNickSnapshots.find((s) => selectedArr.includes(s.last_successful_sync))
+        ?.account_id ?? activeAccount?.id;
+    if (!snapshotAccountId) return;
+
+    setComparisonLoading(true);
+    setComparisonData([]);
+    try {
+      const res =
+        selectedArr.length === 1 ?
+          await api.getAnalysisBySnapshot(snapshotAccountId, selectedArr[0])
+        : await api.compareAnalysisAcrossSnapshots(
+            snapshotAccountId,
+            selectedArr,
+          );
+      if (res.status === "success") {
+        const freshData = res.data || [];
+        snapshotCacheRef.current[cacheKey] = freshData; // populate cache
+        setComparisonData(freshData);
+        setViewMode("snapshot");
+        if (selectedArr.length > 1) setShowCharts(true);
+      }
+    } catch (e) {
+      // leave comparisonData empty; user sees empty state
+    } finally {
+      setComparisonLoading(false);
+    }
+  };
+
+  // ── Chart section navigator ──────────────────────────────────────────────
+  const scrollToChart = (id) => {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   // ── Status renderers ──────────────────────────────────────────────────────
   const renderSyncStatus = () => {
     if (syncing && !syncStatus)
@@ -375,12 +411,26 @@ export default function AccountTabs({
   // last_successful_sync from the analysis rows for this account
   const positionsLastSync = analysisRows[0]?.last_successful_sync ?? null;
 
-  // Analysis totals (same value on all rows for one account at one snapshot)
+  // Analysis totals — from cached rows in latest mode, from loaded data in single-snapshot mode
   const analysisTotalBought = analysisRows[0]?.total_bought ?? null;
   const analysisTotalCurrent = analysisRows[0]?.total_current ?? null;
 
-  // In comparison mode we show charts; otherwise show the analysis table
-  const showCharts = selectedSnapshots.size >= 2;
+  const summaryBought =
+    viewMode === "latest" ? analysisTotalBought : (
+      (comparisonData[0]?.total_bought ?? null)
+    );
+  const summaryCurrent =
+    viewMode === "latest" ? analysisTotalCurrent : (
+      (comparisonData[0]?.total_current ?? null)
+    );
+  // Show summary in latest mode and single-snapshot mode; hide in multi-snapshot compare
+  const showSummary =
+    selectedSnapshots.size <= 1 &&
+    (summaryBought != null || summaryCurrent != null);
+
+  // Data to render — cached analysis rows in "latest" mode, fetched data in "snapshot" mode
+  const activeChartData = viewMode === "latest" ? analysisRows : comparisonData;
+  const activeTableRows = viewMode === "latest" ? analysisRows : comparisonData;
 
   const handleDividerMouseDown = (e) => {
     e.preventDefault();
@@ -489,24 +539,31 @@ export default function AccountTabs({
           {activeSubTab === "table" && currentSym && (
             <span className="subtab-active-sym">{currentSym}</span>
           )}
-          {activeSubTab === "analysis" && showCharts && (
-            <span className="subtab-active-sym">
-              {selectedSnapshots.size} {t.snapshotsSelected ?? "snapshots"}
-            </span>
-          )}
+          {activeSubTab === "analysis" &&
+            viewMode === "snapshot" &&
+            selectedSnapshots.size > 0 && (
+              <span className="subtab-active-sym">
+                {selectedSnapshots.size === 1 ?
+                  [...selectedSnapshots][0].slice(0, 10)
+                : `${selectedSnapshots.size} ${t.snapshotsSelected ?? "snapshots"}`
+                }
+              </span>
+            )}
         </div>
 
-        {/* Content area */}
-        {activeSubTab === "table" ?
-          symbolList.length === 0 ?
-            <div className="status-msg">{t.noSymbols}</div>
-          : <TransactionTable t={t} rows={rows} hypothetical={currentHyp} />
-        : /* Analysis sub-tab */
-        comparisonLoading ?
-          <div className="status-msg">{t.loading}</div>
-        : showCharts ?
-          <AnalysisCharts t={t} data={comparisonData} />
-        : <AnalysisTable t={t} rows={analysisRows} rankCol={rankCol} />}
+        {/* Content area — scrollable so charts don't get clipped */}
+        <div className="content-scroll">
+          {activeSubTab === "table" ?
+            symbolList.length === 0 ?
+              <div className="status-msg">{t.noSymbols}</div>
+            : <TransactionTable t={t} rows={rows} hypothetical={currentHyp} />
+          : /* Analysis sub-tab */
+          comparisonLoading ?
+            <div className="status-msg">{t.loading}</div>
+          : showCharts ?
+            <AnalysisCharts t={t} data={activeChartData} rankCol={rankCol} />
+          : <AnalysisTable t={t} rows={activeTableRows} rankCol={rankCol} />}
+        </div>
       </div>
 
       {/* ── DIVIDER ── */}
@@ -617,34 +674,99 @@ export default function AccountTabs({
               </div>
             </div>
 
-            {/* Account totals summary (latest snapshot) */}
-            {!showCharts &&
-              (analysisTotalBought != null || analysisTotalCurrent != null) && (
-                <div className="analysis-summary">
-                  {analysisTotalBought != null && (
-                    <div className="analysis-summary-item">
-                      <span className="analysis-summary-label">
-                        {t.totalBought}
-                      </span>
-                      <strong className="analysis-summary-value neg">
-                        {fmtCAD(analysisTotalBought)}
-                      </strong>
-                    </div>
-                  )}
-                  {analysisTotalCurrent != null && (
-                    <div className="analysis-summary-item">
-                      <span className="analysis-summary-label">
-                        {t.totalCurrent}
-                      </span>
-                      <strong className="analysis-summary-value pos">
-                        {fmtCAD(analysisTotalCurrent)}
-                      </strong>
-                    </div>
-                  )}
-                </div>
-              )}
+            {/* Account totals summary — latest mode or single snapshot */}
+            {showSummary && (
+              <div className="analysis-summary">
+                {summaryBought != null && (
+                  <div className="analysis-summary-item">
+                    <span className="analysis-summary-label">
+                      {t.totalBought}
+                    </span>
+                    <strong className="analysis-summary-value neg">
+                      {fmtCAD(summaryBought)}
+                    </strong>
+                  </div>
+                )}
+                {summaryCurrent != null && (
+                  <div className="analysis-summary-item">
+                    <span className="analysis-summary-label">
+                      {t.totalCurrent}
+                    </span>
+                    <strong className="analysis-summary-value pos">
+                      {fmtCAD(summaryCurrent)}
+                    </strong>
+                  </div>
+                )}
+              </div>
+            )}
 
-            {/* Rank selector — only visible in table mode (< 2 snapshots) */}
+            {/* ── View mode: Latest Cycle vs Snapshot(s) ────────────────── */}
+            <div className="analysis-mode-toggle">
+              <button
+                className={`mode-btn ${viewMode === "latest" ? "active" : ""}`}
+                onClick={handleDefault}>
+                {t.latestCycle ?? "Latest Cycle"}
+              </button>
+              <button
+                className={`mode-btn ${viewMode === "snapshot" ? "active" : ""}`}
+                onClick={() => setViewMode("snapshot")}>
+                {t.snapshotMode ?? "Snapshot(s)"}
+                {selectedSnapshots.size > 0 && ` (${selectedSnapshots.size})`}
+              </button>
+            </div>
+
+            {/* ── Table / Charts toggle ─────────────────────────────────── */}
+            <div className="chart-view-toggle">
+              <button
+                className={`chart-view-opt ${!showCharts ? "active" : ""}`}
+                disabled={viewMode === "snapshot" && selectedSnapshots.size > 1}
+                onClick={() => setShowCharts(false)}>
+                ☰ {t.viewTable ?? "Table"}
+              </button>
+              <button
+                className={`chart-view-opt ${showCharts ? "active" : ""}`}
+                onClick={() => setShowCharts(true)}>
+                ▦ {t.viewCharts ?? "Charts"}
+              </button>
+            </div>
+
+            {/* ── Load Analysis — above snapshot list for quick access ───── */}
+            {viewMode === "snapshot" && (
+              <button
+                className="snapshot-load-btn"
+                onClick={handleAnalyze}
+                disabled={selectedSnapshots.size === 0 || comparisonLoading}>
+                {comparisonLoading ?
+                  (t.loading ?? "Loading…")
+                : (t.loadSnapshot ?? "Load Analysis")}
+              </button>
+            )}
+
+            {/* ── Chart nav — jump to each chart section ────────────────── */}
+            {showCharts && (
+              <div className="chart-nav">
+                <span className="chart-nav-label">
+                  {t.navJumpTo ?? "Jump to"}
+                </span>
+                <button
+                  className="chart-nav-btn"
+                  onClick={() => scrollToChart("chart-growth")}>
+                  {t.navChartGrowth ?? "① Growth %"}
+                </button>
+                <button
+                  className="chart-nav-btn"
+                  onClick={() => scrollToChart("chart-allocation")}>
+                  {t.navChartAllocation ?? "② Allocation"}
+                </button>
+                <button
+                  className="chart-nav-btn"
+                  onClick={() => scrollToChart("chart-value")}>
+                  {t.navChartValue ?? "③ Position Value"}
+                </button>
+              </div>
+            )}
+
+            {/* Rank selector — only relevant for table view */}
             {!showCharts && (
               <div className="rank-selector">
                 <span className="rank-label">{t.rankBy}</span>
@@ -659,8 +781,8 @@ export default function AccountTabs({
               </div>
             )}
 
-            {/* Snapshot selector */}
-            {accountSnapshots.length > 0 && (
+            {/* ── Snapshot selector — only in snapshot mode ─────────────── */}
+            {viewMode === "snapshot" && allNickSnapshots.length > 0 && (
               <div className="snapshot-selector">
                 <div className="snapshot-header">
                   <span className="snapshot-label">
@@ -681,43 +803,48 @@ export default function AccountTabs({
                     </button>
                   </div>
                 </div>
-                <div className="snapshot-actions">
-                  <button
-                    className="snap-action-btn"
-                    onClick={selectAllSnapshots}>
-                    {t.selectAll ?? "Select All"}
-                  </button>
-                  <button
-                    className="snap-action-btn"
-                    onClick={clearAllSnapshots}>
-                    {t.clearAll ?? "Clear All"}
-                  </button>
-                </div>
+
+                {comparisonData.length === 0 && !comparisonLoading && (
+                  <div className="snapshot-hint">
+                    {t.snapshotHint ??
+                      "Select one or more snapshots, then click Load."}
+                  </div>
+                )}
+
                 <div className="snapshot-list">
-                  {accountSnapshots.map((s) => {
-                    const checked = selectedSnapshots.has(
-                      s.last_successful_sync,
-                    );
-                    return (
-                      <label
-                        key={s.last_successful_sync}
-                        className={`snapshot-item ${checked ? "checked" : ""} ${s.trigger === "manual" ? "manual" : ""}`}>
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() =>
-                            toggleSnapshot(s.last_successful_sync)
-                          }
-                        />
-                        <span className="snapshot-date">
-                          {s.last_successful_sync.slice(0, 10)}
-                        </span>
-                        {s.trigger === "manual" && (
-                          <span className="snapshot-trigger-badge">M</span>
-                        )}
-                      </label>
-                    );
-                  })}
+                  {accountSnapshots.length === 0 ?
+                    <div className="snapshot-empty">
+                      {t.noScheduledSnapshots ?? "No scheduled snapshots"}
+                    </div>
+                  : accountSnapshots.map((s) => {
+                      const checked = selectedSnapshots.has(
+                        s.last_successful_sync,
+                      );
+                      const isManual = s.trigger === "manual";
+                      return (
+                        <label
+                          key={s.last_successful_sync}
+                          className={`snapshot-item ${checked ? "checked" : ""}`}>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() =>
+                              toggleSnapshot(s.last_successful_sync)
+                            }
+                          />
+                          <span className="snapshot-date">
+                            {s.last_successful_sync.slice(0, 10)}
+                          </span>
+                          <span
+                            className={`snapshot-trigger-badge ${isManual ? "manual" : "scheduled"}`}>
+                            {isManual ?
+                              (t.triggerManual ?? "Manual")
+                            : (t.triggerScheduled ?? "Scheduled")}
+                          </span>
+                        </label>
+                      );
+                    })
+                  }
                 </div>
               </div>
             )}

@@ -40,6 +40,16 @@
   --analysis-tab-bg: #694bc3;
   /* Table sub-tab background (warm terracotta) */
   --table-tab-bg: #bb6334;
+  /* ── Chart view toggle (Table / Charts) ── change these to restyle it */
+  --chart-toggle-track: #dce3ea; /* outer track background              */
+  --chart-toggle-active: #6e8fa8; /* fill of the selected nub            */
+  /* ── Rank selector buttons ── change these to restyle the rank list */
+  --rank-inactive-bg: #f4f0fb; /* inactive button background              */
+  --rank-inactive-border: #d4c6f0; /* inactive button border                  */
+  --rank-inactive-text: #7c5cbf; /* inactive button text                    */
+  --rank-hover-bg: #e9e0f7; /* hover background                        */
+  --rank-active-bg: #9775d0; /* active (selected) button fill           */
+  --rank-active-border: #8861c4; /* active button border                    */
   font-family:
     "Inter",
     -apple-system,
@@ -759,6 +769,274 @@
   flex-direction: column;
   gap: 12px;
   flex: 1;
+  overflow-y: auto;
+}
+
+/* ── Snapshot selector ────────────────────────────────────────────────────── */
+.snapshot-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-height: 0;
+}
+
+.snapshot-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.snapshot-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.snapshot-trigger-toggle {
+  display: flex;
+  gap: 3px;
+}
+
+.trigger-btn {
+  padding: 2px 7px;
+  font-size: 10px;
+  font-family: inherit;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.trigger-btn.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+  font-weight: 600;
+}
+
+/* ── Analysis view/format controls ──────────────────────────────────────── */
+.analysis-view-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.analysis-mode-toggle,
+.analysis-format-toggle {
+  display: flex;
+  gap: 3px;
+}
+
+.mode-btn,
+.format-btn {
+  flex: 1;
+  padding: 4px 6px;
+  font-size: 11px;
+  font-family: inherit;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s;
+  text-align: center;
+}
+.mode-btn:hover,
+.format-btn:hover {
+  border-color: var(--primary);
+  color: var(--text);
+}
+.mode-btn.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+  font-weight: 600;
+}
+.format-btn.active {
+  background: color-mix(in srgb, var(--primary) 15%, transparent);
+  border-color: var(--primary);
+  color: var(--primary);
+  font-weight: 600;
+}
+.format-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ── Snapshot load button ────────────────────────────────────────────────── */
+.snapshot-load-btn {
+  width: 100%;
+  margin-top: 4px;
+  padding: 5px 8px;
+  font-size: 11px;
+  font-family: inherit;
+  border: 1px solid var(--primary);
+  border-radius: 5px;
+  background: var(--primary);
+  color: #fff;
+  cursor: pointer;
+  font-weight: 600;
+  transition: opacity 0.15s;
+}
+.snapshot-load-btn:hover {
+  opacity: 0.85;
+}
+.snapshot-load-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ── Snapshot hint + empty state ─────────────────────────────────────────── */
+.snapshot-hint {
+  font-size: 10px;
+  color: var(--text-muted);
+  padding: 3px 2px 1px;
+  font-style: italic;
+  line-height: 1.3;
+}
+
+.snapshot-empty {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 8px 4px;
+  font-style: italic;
+}
+
+.snapshot-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.snapshot-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--text-muted);
+  border: 1px solid transparent;
+}
+.snapshot-item:hover {
+  background: var(--surface);
+  border-color: var(--border);
+}
+.snapshot-item.checked {
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+  border-color: color-mix(in srgb, var(--primary) 30%, transparent);
+  color: var(--text);
+}
+.snapshot-item.manual .snapshot-date {
+  color: var(--text-muted);
+}
+
+.snapshot-date {
+  flex: 1;
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+}
+
+.snapshot-trigger-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.snapshot-trigger-badge.manual {
+  background: #fef3c722;
+  color: #b45309;
+  border: 1px solid #f59e0b66;
+}
+.snapshot-trigger-badge.scheduled {
+  background: #dbeafe44;
+  color: #1d4ed8;
+  border: 1px solid #3b82f666;
+}
+
+/* ── Analysis charts ─────────────────────────────────────────────────────── */
+.analysis-charts {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 8px 0;
+}
+
+.chart-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chart-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+}
+
+.chart-scroll-x {
+  overflow-x: auto;
+}
+
+/* ── Table / Charts toggle — segmented control: track + floating nub ──────── */
+.chart-view-toggle {
+  display: inline-flex;
+  align-self: flex-start; /* shrink to content width — don't stretch to fill parent */
+  background: var(--chart-toggle-track);
+  border-radius: 14px;
+  padding: 2px;
+  gap: 2px;
+  border: none;
+}
+.chart-view-opt {
+  padding: 3px 10px;
+  border: none;
+  border-radius: 11px;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 500;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: inherit;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    box-shadow 0.15s;
+  white-space: nowrap;
+  text-align: center;
+}
+.chart-view-opt.active {
+  background: var(--chart-toggle-active);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+}
+.chart-view-opt:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ── Chart subtitle annotation ────────────────────────────────────────────── */
+.chart-subtitle {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-left: 4px;
 }
 
 .analysis-refresh {
@@ -767,11 +1045,11 @@
   gap: 0px;
 }
 
-/* ── Rank selector ────────────────────────────────────────────────────────── */
+/* ── Rank selector — compact vertical list, muted purple theme ────────────── */
 .rank-selector {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
 .rank-label {
@@ -780,32 +1058,72 @@
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.3px;
-  margin-bottom: 2px;
+  margin-bottom: 1px;
 }
 
 .rank-btn {
   display: block;
   width: 100%;
-  padding: 6px 10px;
+  padding: 3px 8px;
   text-align: left;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  font-size: 11px;
+  background: var(--rank-inactive-bg);
+  border: 1px solid var(--rank-inactive-border);
+  border-radius: 5px;
+  font-size: 10px;
   cursor: pointer;
   font-family: inherit;
-  color: var(--text-muted);
+  color: var(--rank-inactive-text);
   transition: all 0.1s;
 }
 .rank-btn:hover {
-  color: var(--text);
-  border-color: var(--primary);
+  background: var(--rank-hover-bg);
+  border-color: var(--rank-inactive-border);
+  color: var(--rank-inactive-text);
 }
 .rank-btn.active {
-  background: var(--primary);
+  background: var(--rank-active-bg);
   color: #fff;
-  border-color: var(--primary);
+  border-color: var(--rank-active-border);
   font-weight: 600;
+}
+
+/* ── Chart navigator — jump buttons in the utility panel ─────────────────── */
+.chart-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.chart-nav-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-bottom: 1px;
+}
+
+.chart-nav-btn {
+  display: block;
+  width: 100%;
+  padding: 4px 8px;
+  text-align: left;
+  background: #eef2f7;
+  border: 1px solid #c8d4e0;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  color: #3a5a78;
+  transition:
+    background 0.1s,
+    border-color 0.1s;
+}
+.chart-nav-btn:hover {
+  background: #dce8f4;
+  border-color: #9ab6cf;
+  color: #1e3a56;
 }
 
 /* ── Analysis table: column emphasis ─────────────────────────────────────── */
@@ -923,4 +1241,11 @@
   letter-spacing: 0.04em;
   padding: 0 4px;
   opacity: 0.9;
+}
+
+/* ── Scrollable content area (analysis table / charts) ───────────────────── */
+.content-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }

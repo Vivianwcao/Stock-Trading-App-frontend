@@ -1,16 +1,22 @@
 import { fmtPrice, fmtUnits, fmtCAD, fmtPct } from "../utils/format";
 
-// rows: filtered to the active account's nickname, from the analysis view
-// rankCol: one of the *_rnk column names or "cost_basis" — rank 1 = top position
+// Columns where higher = better (sort descending so best position is first)
+const DESCENDING_COLS = new Set(["bought_ratio", "current_ratio", "growth_percentage"]);
+
+// rows: filtered to the active account's account_id, from the analysis view
+// rankCol: "bought_ratio" | "current_ratio" | "growth_percentage" | "cost_basis"
 export default function AnalysisTable({ t, rows, rankCol }) {
   if (!rows.length) {
     return <div className="status-msg">{t.noPositions}</div>;
   }
 
-  // rank columns are 1-based integers; cost_basis is a raw decimal — both sort ascending
-  const sorted = [...rows].sort(
-    (a, b) => (a[rankCol] ?? 9999) - (b[rankCol] ?? 9999),
-  );
+  const sorted = [...rows].sort((a, b) => {
+    const descending = DESCENDING_COLS.has(rankCol);
+    const fallback = descending ? -Infinity : Infinity;
+    const av = a[rankCol] ?? fallback;
+    const bv = b[rankCol] ?? fallback;
+    return descending ? bv - av : av - bv;
+  });
 
   return (
     <div className="table-wrapper">

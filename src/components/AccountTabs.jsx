@@ -4,6 +4,7 @@ import { fmtVancouver, fmtCAD } from "../utils/format";
 import TransactionTable from "./TransactionTable";
 import Calculator from "./Calculator";
 import AnalysisTable from "./AnalysisTable";
+import AnalysisCharts from "./AnalysisCharts";
 
 function getLatestTradeDate(rows) {
   for (let i = rows.length - 1; i >= 0; i--) {
@@ -21,11 +22,14 @@ function getToday() {
 }
 
 const RANK_OPTIONS = [
-  { key: "bought_ratio_rnk", labelKey: "rankBoughtRatio" },
-  { key: "current_ratio_rnk", labelKey: "rankCurrentRatio" },
-  { key: "growth_percentage_rnk", labelKey: "rankGrowth" },
+  { key: "bought_ratio", labelKey: "rankBoughtRatio" },
+  { key: "current_ratio", labelKey: "rankCurrentRatio" },
+  { key: "growth_percentage", labelKey: "rankGrowth" },
   { key: "cost_basis", labelKey: "rankCostBasis" },
 ];
+
+// Default: last N scheduled snapshots selected on account switch
+const DEFAULT_SNAPSHOT_COUNT = 20;
 
 export default function AccountTabs({
   t,
@@ -35,7 +39,9 @@ export default function AccountTabs({
   lang,
   setLang,
   analysis,
-  onSetAnalysis,
+  snapshots,
+  onMergeAnalysis,
+  onMergeSnapshots,
   onSetAccounts,
   onMergeTransactions,
   onUpdateLastFetched,
@@ -52,13 +58,19 @@ export default function AccountTabs({
   const [activeSubTab, setActiveSubTab] = useState("table");
   const [positionsRefreshing, setPositionsRefreshing] = useState(false);
   const [positionStatus, setPositionStatus] = useState(null);
-  const [rankCol, setRankCol] = useState("bought_ratio_rnk");
+  const [rankCol, setRankCol] = useState("bought_ratio");
 
-  // Per-account sync state (replaces global sync in App.jsx)
+  // Per-account sync state
   const [syncing, setSyncing] = useState(false);
   const [syncStatus, setSyncStatus] = useState(null);
 
-  // Reset per-account state when switching accounts (skip initial mount)
+  // Snapshot comparison state
+  const [selectedSnapshots, setSelectedSnapshots] = useState(new Set());
+  const [showAllTriggers, setShowAllTriggers] = useState(false);
+  const [comparisonData, setComparisonData] = useState([]);
+  const [comparisonLoading, setComparisonLoading] = useState(false);
+
+  // Reset per-account UI state when switching accounts (skip initial mount)
   const isInitialMount = useRef(true);
   useEffect(() => {
     if (isInitialMount.current) {
@@ -74,7 +86,56 @@ export default function AccountTabs({
     setPositionsRefreshing(false);
     setSyncStatus(null);
     setSyncing(false);
+    setComparisonData([]);
+    setComparisonLoading(false);
+    setShowAllTriggers(false);
   }, [activeNick]);
+
+  // Initialize snapshot selection on account switch (runs on mount + every switch)
+  useEffect(() => {
+    const acc = accounts.find((a) => a.nickname === activeNick);
+    if (!acc) return;
+    const defaultDates = snapshots
+      .filter((r) => r.account_id === acc.id && r.trigger === "scheduled")
+      .sort((a, b) =>
+        b.last_successful_sync.localeCompare(a.last_successful_sync),
+      )
+      .slice(0, DEFAULT_SNAPSHOT_COUNT)
+      .map((r) => r.last_successful_sync);
+    setSelectedSnapshots(new Set(defaultDates));
+  }, [activeNick]); // eslint-disable-line react-hooks/exhaustive-deps
+  // ↑ Intentionally not including snapshots — only reset on account switch.
+  //   After refreshPositions the user's selection is preserved.
+
+  // Auto-fetch comparison data when ≥2 snapshots selected
+  useEffect(() => {
+    if (selectedSnapshots.size < 2) {
+      setComparisonData([]);
+      return;
+    }
+    const acc = accounts.find((a) => a.nickname === activeNick);
+    if (!acc) return;
+
+    let cancelled = false;
+    setComparisonLoading(true);
+    api
+      .compareAnalysisAcrossSnapshots(acc.id, [...selectedSnapshots])
+      .then((res) => {
+        if (cancelled) return;
+        if (res.status === "success") setComparisonData(res.data || []);
+        else setComparisonData([]);
+      })
+      .catch(() => {
+        if (!cancelled) setComparisonData([]);
+      })
+      .finally(() => {
+        if (!cancelled) setComparisonLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedSnapshots, activeNick]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const activeAccount = accounts.find((a) => a.nickname === activeNick);
   const symbols = (activeNick && grouped[activeNick]) || {};
@@ -90,11 +151,25 @@ export default function AccountTabs({
     });
   }, [symbols]);
 
-  // Analysis rows filtered to the active account
+  // Analysis rows filtered to the active account (by account_id, not nickname)
   const analysisRows = useMemo(
-    () => analysis.filter((r) => r.nickname === activeNick),
-    [analysis, activeNick],
+    () => analysis.filter((r) => r.account_id === activeAccount?.id),
+    [analysis, activeAccount?.id],
   );
+
+  // Snapshot dates for the active account, filtered by trigger toggle
+  const accountSnapshots = useMemo(() => {
+    if (!activeAccount?.id) return [];
+    return snapshots
+      .filter(
+        (r) =>
+          r.account_id === activeAccount.id &&
+          (showAllTriggers || r.trigger === "scheduled"),
+      )
+      .sort((a, b) =>
+        b.last_successful_sync.localeCompare(a.last_successful_sync),
+      );
+  }, [snapshots, activeAccount?.id, showAllTriggers]);
 
   // Most recent activities fetch for the active account specifically
   const actLastFetched = useMemo(() => {
@@ -147,19 +222,6 @@ export default function AccountTabs({
         if (timestamp) {
           onUpdateLastFetched("activities", activeAccount.id, timestamp);
         }
-        // Reload transactions for this account
-        const txRes = await api.getTransactions();
-        if (txRes.status === "success") {
-          const acctTxns = (txRes.data || []).filter(
-            (r) => r.account_id === activeAccount.id,
-          );
-          onMergeTransactions(activeAccount.id, acctTxns);
-        }
-        // Refresh accounts to update last_successful_sync on tabs
-        const accRes = await api.getAccounts();
-        if (accRes.status === "success") {
-          onSetAccounts(accRes.data?.accounts || []);
-        }
       }
     } catch (e) {
       setSyncStatus({ status: "fail", error: e.message });
@@ -183,7 +245,7 @@ export default function AccountTabs({
         const timestamp =
           ft?.fetched_at ?? (typeof ft === "string" ? ft : null);
         if (timestamp) {
-          onUpdateLastFetched("activities", activeAccount.id, timestamp);
+          onUpdateLastFetched("orders", activeAccount.id, timestamp);
         }
       }
     } catch (e) {
@@ -199,8 +261,13 @@ export default function AccountTabs({
     try {
       const res = await api.refreshPositions(activeAccount.id);
       setPositionStatus(res);
-      if (res.status === "success") {
-        onSetAnalysis(res.data || []);
+      if (res.status === "success" || res.status === "partial") {
+        const {
+          analysis: freshAnalysis = [],
+          sync_dates: freshSnapshots = [],
+        } = res.data || {};
+        onMergeAnalysis(activeAccount.id, freshAnalysis);
+        onMergeSnapshots(activeAccount.id, freshSnapshots);
       }
     } catch (e) {
       setPositionStatus({ status: "fail", error: e.message });
@@ -209,15 +276,34 @@ export default function AccountTabs({
     }
   };
 
+  // ── Snapshot selector helpers ────────────────────────────────────────────
+  const toggleSnapshot = (syncDate) => {
+    setSelectedSnapshots((prev) => {
+      const next = new Set(prev);
+      if (next.has(syncDate)) next.delete(syncDate);
+      else next.add(syncDate);
+      return next;
+    });
+  };
+
+  const selectAllSnapshots = () => {
+    setSelectedSnapshots(
+      new Set(accountSnapshots.map((r) => r.last_successful_sync)),
+    );
+  };
+
+  const clearAllSnapshots = () => {
+    setSelectedSnapshots(new Set());
+  };
+
+  // ── Status renderers ──────────────────────────────────────────────────────
   const renderSyncStatus = () => {
     if (syncing && !syncStatus)
       return <span className="sync-msg syncing">{t.syncing}</span>;
     if (!syncStatus) return null;
     if (syncStatus.status === "success") {
-      const msg =
-        syncStatus.rowsUpdated != null ?
-          t.rowsUpdated(syncStatus.rowsUpdated)
-        : t.syncSuccess;
+      const n = syncStatus.data?.rows_updated;
+      const msg = n != null ? t.rowsUpdated(n) : t.syncSuccess;
       return <span className="sync-msg ok">{msg}</span>;
     }
     if (syncStatus.status === "cooldown") {
@@ -262,6 +348,13 @@ export default function AccountTabs({
     if (!positionStatus) return null;
     if (positionStatus.status === "success")
       return <span className="sync-msg ok">{t.positionsSynced}</span>;
+    if (positionStatus.status === "partial")
+      return (
+        <span className="sync-msg warn">
+          {t.positionsPartial ?? "API rate limited — showing cached data"}
+          {positionStatus.error ? `: ${positionStatus.error}` : ""}
+        </span>
+      );
     if (positionStatus.status === "cooldown") {
       const {
         hours: h = 0,
@@ -279,12 +372,15 @@ export default function AccountTabs({
     return null;
   };
 
-  // last_successful_sync from the positions data for this account
+  // last_successful_sync from the analysis rows for this account
   const positionsLastSync = analysisRows[0]?.last_successful_sync ?? null;
 
-  // Analysis totals for the active account (same value on all rows for one account)
+  // Analysis totals (same value on all rows for one account at one snapshot)
   const analysisTotalBought = analysisRows[0]?.total_bought ?? null;
   const analysisTotalCurrent = analysisRows[0]?.total_current ?? null;
+
+  // In comparison mode we show charts; otherwise show the analysis table
+  const showCharts = selectedSnapshots.size >= 2;
 
   const handleDividerMouseDown = (e) => {
     e.preventDefault();
@@ -318,11 +414,8 @@ export default function AccountTabs({
               rows.some((r) => r.trade_date?.slice(0, 10) === today),
             );
 
-            // Determine which current value to show: analysis.total_current vs acc.balance
-            // Use whichever has the more recent sync date
-            const accAnalysis = analysis.filter(
-              (r) => r.nickname === acc.nickname,
-            );
+            // Filter analysis by account_id (not nickname)
+            const accAnalysis = analysis.filter((r) => r.account_id === acc.id);
             const tabTotalBought = accAnalysis[0]?.total_bought ?? null;
             const analysisCurrent = accAnalysis[0]?.total_current ?? null;
             const analysisSync = accAnalysis[0]?.last_successful_sync ?? null;
@@ -396,6 +489,11 @@ export default function AccountTabs({
           {activeSubTab === "table" && currentSym && (
             <span className="subtab-active-sym">{currentSym}</span>
           )}
+          {activeSubTab === "analysis" && showCharts && (
+            <span className="subtab-active-sym">
+              {selectedSnapshots.size} {t.snapshotsSelected ?? "snapshots"}
+            </span>
+          )}
         </div>
 
         {/* Content area */}
@@ -403,6 +501,11 @@ export default function AccountTabs({
           symbolList.length === 0 ?
             <div className="status-msg">{t.noSymbols}</div>
           : <TransactionTable t={t} rows={rows} hypothetical={currentHyp} />
+        : /* Analysis sub-tab */
+        comparisonLoading ?
+          <div className="status-msg">{t.loading}</div>
+        : showCharts ?
+          <AnalysisCharts t={t} data={comparisonData} />
         : <AnalysisTable t={t} rows={analysisRows} rankCol={rankCol} />}
       </div>
 
@@ -436,7 +539,7 @@ export default function AccountTabs({
                 className="btn btn-primary btn-sync"
                 onClick={syncActivities}
                 disabled={syncing}>
-                {syncing ? t.syncing : t.syncActivities}
+                {syncing ? t.syncing : `${t.syncActivities}: ${activeNick}`}
               </button>
               <div className="sync-status">
                 {renderSyncStatus()}
@@ -488,11 +591,13 @@ export default function AccountTabs({
                 onRefreshOrders={refreshOrders}
                 refreshing={refreshing}
                 renderOrderStatus={renderOrderStatus}
+                nickname={activeNick}
               />
             )}
           </>
-        : /* Analysis mode: Refresh Positions + summary + rank selector */
+        : /* Analysis mode: Refresh Positions + snapshot selector + rank */
           <div className="analysis-controls">
+            {/* Refresh Positions button */}
             <div className="analysis-refresh">
               <button
                 className="btn btn-analysis"
@@ -512,43 +617,110 @@ export default function AccountTabs({
               </div>
             </div>
 
-            {/* Account totals summary */}
-            {(analysisTotalBought != null || analysisTotalCurrent != null) && (
-              <div className="analysis-summary">
-                {analysisTotalBought != null && (
-                  <div className="analysis-summary-item">
-                    <span className="analysis-summary-label">
-                      {t.totalBought}
-                    </span>
-                    <strong className="analysis-summary-value neg">
-                      {fmtCAD(analysisTotalBought)}
-                    </strong>
-                  </div>
-                )}
-                {analysisTotalCurrent != null && (
-                  <div className="analysis-summary-item">
-                    <span className="analysis-summary-label">
-                      {t.totalCurrent}
-                    </span>
-                    <strong className="analysis-summary-value pos">
-                      {fmtCAD(analysisTotalCurrent)}
-                    </strong>
-                  </div>
-                )}
+            {/* Account totals summary (latest snapshot) */}
+            {!showCharts &&
+              (analysisTotalBought != null || analysisTotalCurrent != null) && (
+                <div className="analysis-summary">
+                  {analysisTotalBought != null && (
+                    <div className="analysis-summary-item">
+                      <span className="analysis-summary-label">
+                        {t.totalBought}
+                      </span>
+                      <strong className="analysis-summary-value neg">
+                        {fmtCAD(analysisTotalBought)}
+                      </strong>
+                    </div>
+                  )}
+                  {analysisTotalCurrent != null && (
+                    <div className="analysis-summary-item">
+                      <span className="analysis-summary-label">
+                        {t.totalCurrent}
+                      </span>
+                      <strong className="analysis-summary-value pos">
+                        {fmtCAD(analysisTotalCurrent)}
+                      </strong>
+                    </div>
+                  )}
+                </div>
+              )}
+
+            {/* Rank selector — only visible in table mode (< 2 snapshots) */}
+            {!showCharts && (
+              <div className="rank-selector">
+                <span className="rank-label">{t.rankBy}</span>
+                {RANK_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.key}
+                    className={`rank-btn ${rankCol === opt.key ? "active" : ""}`}
+                    onClick={() => setRankCol(opt.key)}>
+                    {t[opt.labelKey]}
+                  </button>
+                ))}
               </div>
             )}
 
-            <div className="rank-selector">
-              <span className="rank-label">{t.rankBy}</span>
-              {RANK_OPTIONS.map((opt) => (
-                <button
-                  key={opt.key}
-                  className={`rank-btn ${rankCol === opt.key ? "active" : ""}`}
-                  onClick={() => setRankCol(opt.key)}>
-                  {t[opt.labelKey]}
-                </button>
-              ))}
-            </div>
+            {/* Snapshot selector */}
+            {accountSnapshots.length > 0 && (
+              <div className="snapshot-selector">
+                <div className="snapshot-header">
+                  <span className="snapshot-label">
+                    {t.snapshots ?? "Snapshots"}
+                    {selectedSnapshots.size > 0 &&
+                      ` (${selectedSnapshots.size})`}
+                  </span>
+                  <div className="snapshot-trigger-toggle">
+                    <button
+                      className={`trigger-btn ${!showAllTriggers ? "active" : ""}`}
+                      onClick={() => setShowAllTriggers(false)}>
+                      {t.scheduled ?? "Scheduled"}
+                    </button>
+                    <button
+                      className={`trigger-btn ${showAllTriggers ? "active" : ""}`}
+                      onClick={() => setShowAllTriggers(true)}>
+                      {t.allTriggers ?? "All"}
+                    </button>
+                  </div>
+                </div>
+                <div className="snapshot-actions">
+                  <button
+                    className="snap-action-btn"
+                    onClick={selectAllSnapshots}>
+                    {t.selectAll ?? "Select All"}
+                  </button>
+                  <button
+                    className="snap-action-btn"
+                    onClick={clearAllSnapshots}>
+                    {t.clearAll ?? "Clear All"}
+                  </button>
+                </div>
+                <div className="snapshot-list">
+                  {accountSnapshots.map((s) => {
+                    const checked = selectedSnapshots.has(
+                      s.last_successful_sync,
+                    );
+                    return (
+                      <label
+                        key={s.last_successful_sync}
+                        className={`snapshot-item ${checked ? "checked" : ""} ${s.trigger === "manual" ? "manual" : ""}`}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() =>
+                            toggleSnapshot(s.last_successful_sync)
+                          }
+                        />
+                        <span className="snapshot-date">
+                          {s.last_successful_sync.slice(0, 10)}
+                        </span>
+                        {s.trigger === "manual" && (
+                          <span className="snapshot-trigger-badge">M</span>
+                        )}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         }
       </div>

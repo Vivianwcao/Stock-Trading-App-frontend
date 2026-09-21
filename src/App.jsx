@@ -11,6 +11,7 @@ export default function App() {
   const [transactions, setTransactions] = useState([]);
   const [lastFetched, setLastFetched] = useState([]);
   const [analysis, setAnalysis] = useState([]);
+  const [snapshots, setSnapshots] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -20,7 +21,7 @@ export default function App() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Single call: loads accounts, transactions, analysis, last_fetched together
+  // Single call: loads accounts, transactions, analysis, snapshots, last_fetched together
   const loadPageData = async () => {
     const res = await api.onPageLoad();
     if (res.status === "success") {
@@ -28,6 +29,7 @@ export default function App() {
       setAccounts(d.accounts || []);
       setTransactions(d.transactions || []);
       setAnalysis(d.analysis || []);
+      setSnapshots(d.snapshots || []);
       setLastFetched(d.last_fetched || []);
     } else {
       throw new Error(res.error || "Failed to load data");
@@ -39,6 +41,22 @@ export default function App() {
     setTransactions((prev) => [
       ...prev.filter((r) => r.account_id !== accountId),
       ...freshTxns,
+    ]);
+  };
+
+  // Replace analysis rows for one account_id (used after refreshPositions)
+  const mergeAnalysisByAccountId = (accountId, freshAnalysis) => {
+    setAnalysis((prev) => [
+      ...prev.filter((r) => r.account_id !== accountId),
+      ...freshAnalysis,
+    ]);
+  };
+
+  // Replace snapshot rows for one account_id (used after refreshPositions)
+  const mergeSnapshotsByAccountId = (accountId, freshSnapshots) => {
+    setSnapshots((prev) => [
+      ...prev.filter((r) => r.account_id !== accountId),
+      ...freshSnapshots,
     ]);
   };
 
@@ -89,7 +107,9 @@ export default function App() {
           lang={lang}
           setLang={setLang}
           analysis={analysis}
-          onSetAnalysis={setAnalysis}
+          snapshots={snapshots}
+          onMergeAnalysis={mergeAnalysisByAccountId}
+          onMergeSnapshots={mergeSnapshotsByAccountId}
           onSetAccounts={setAccounts}
           onMergeTransactions={mergeTransactionsByAccountId}
           onUpdateLastFetched={updateLastFetchedEntry}

@@ -22,25 +22,33 @@ async function call(action, data = {}) {
 }
 
 export const api = {
-  // Initial load: accounts + transactions + analysis + last_fetched in one shot
+  // Initial load: accounts + transactions + analysis + snapshots + last_fetched in one shot
   onPageLoad: () => call("on_page_load"),
 
   // Sync flow: update accounts, then per-account activities, then full tx refresh
   updateAndGetAccounts: () => call("update_and_get_accounts"),
   updateActivitiesByAccount: (account_id) =>
     call("update_activities_by_account", { account_id }),
-  getTransactions: () => call("get_transactions", {}),
+  getTransactions: () => call("get_transactions_all_accounts", {}),
 
   // Per-symbol: returns transactions for that account_id directly
   refreshOrders: (account_id) =>
     call("update_orders_and_get_transactions_by_account", { account_id }),
 
-  // Per-account: returns full analysis array directly
+  // Per-account: returns { sync_dates, analysis } — may be "partial" if API rate-limited
   refreshPositions: (account_id) =>
-    call("update_positions_and_get_analysis", { account_id }),
+    call("update_positions_and_get_latest_analysis_by_account", { account_id }),
 
   getAccounts: () => call("get_all_accounts"),
 
   updateNickname: (account_id, nickname) =>
     call("update_nickname", { account_id, nickname }),
+
+  // Analysis: single snapshot for one account
+  getAnalysisBySnapshot: (account_id, sync_date) =>
+    call("get_analysis_by_account_by_snapshot", { account_id, sync_date }),
+
+  // Analysis: compare multiple snapshots for one account
+  compareAnalysisAcrossSnapshots: (account_id, sync_dates) =>
+    call("compare_analysis_by_account_across_snapshots", { account_id, sync_dates }),
 };

@@ -7,10 +7,10 @@ import {
   fmtVancouver,
 } from "../utils/format";
 
-// avg_bought_price in the DB is negative - use Math.abs() throughout
+// avg_cost in the DB may be negative - use Math.abs() throughout
 function getAbsAvgCost(lastRow) {
-  if (!lastRow || lastRow.avg_bought_price == null) return null;
-  return Math.abs(lastRow.avg_bought_price);
+  if (!lastRow || lastRow.avg_cost == null) return null;
+  return Math.abs(lastRow.avg_cost);
 }
 
 function computeBuy(avgCost, currentHoldings, price, units) {
@@ -62,7 +62,8 @@ export default function Calculator({
   const [err, setErr] = useState("");
 
   const avgCost = getAbsAvgCost(lastRow);
-  const currentHoldings = lastRow?.rolling_units ?? 0;
+  // holdings_per_cycle is the correct field name (rolling_units does not exist on transaction rows)
+  const currentHoldings = lastRow?.holdings_per_cycle ?? 0;
 
   const handleCalculate = () => {
     setErr("");

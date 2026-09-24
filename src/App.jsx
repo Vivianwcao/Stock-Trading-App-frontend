@@ -8,7 +8,9 @@ export default function App() {
   const t = translations[lang];
 
   const [accounts, setAccounts] = useState([]);
-  const [transactions, setTransactions] = useState([]);
+  // stocks: {nickname: [{symbol, latest_date, holding}]}
+  // Metadata only — no transactions. Transactions are fetched lazily per nickname in AccountTabs.
+  const [stocks, setStocks] = useState({});
   const [lastFetched, setLastFetched] = useState([]);
   const [analysis, setAnalysis] = useState([]);
   const [snapshots, setSnapshots] = useState([]);
@@ -21,27 +23,39 @@ export default function App() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Single call: loads accounts, transactions, analysis, snapshots, last_fetched together
+  // Single call: loads accounts, stock metadata, analysis, snapshots, last_fetched
   const loadPageData = async () => {
     const res = await api.onPageLoad();
     if (res.status === "success") {
       const d = res.data;
       setAccounts(d.accounts || []);
-      setTransactions(d.transactions || []);
       setAnalysis(d.analysis || []);
       setSnapshots(d.snapshots || []);
       setLastFetched(d.last_fetched || []);
+      // Group flat stocks array by nickname
+      const rawStocks = d.stocks || [];
+      const grouped = {};
+      for (const s of rawStocks) {
+        if (!s.nickname) continue;
+        if (!grouped[s.nickname]) grouped[s.nickname] = [];
+        grouped[s.nickname].push(s);
+      }
+      setStocks(grouped);
     } else {
       throw new Error(res.error || "Failed to load data");
     }
   };
 
-  // Merge fresh transactions for one account_id into global state
-  const mergeTransactionsByAccountId = (accountId, freshTxns) => {
-    setTransactions((prev) => [
-      ...prev.filter((r) => r.account_id !== accountId),
-      ...freshTxns,
-    ]);
+  // Merge updated stock metadata for a nickname.
+  // Called after update handlers return new stocks (updated symbols only).
+  // Replaces matching symbols, keeps the rest.
+  const mergeStocksByNickname = (nickname, updatedStocks) => {
+    setStocks((prev) => {
+      const existing = prev[nickname] || [];
+      const updatedSyms = new Set(updatedStocks.map((s) => s.symbol));
+      const kept = existing.filter((s) => !updatedSyms.has(s.symbol));
+      return { ...prev, [nickname]: [...kept, ...updatedStocks] };
+    });
   };
 
   // Replace analysis rows for one account_id (used after refreshPositions)
@@ -70,24 +84,6 @@ export default function App() {
     ]);
   };
 
-  const grouped = useMemo(() => {
-    const g = {};
-    for (const row of transactions) {
-      const nick = row.nickname;
-      const sym = row.symbol;
-      if (!nick || !sym) continue;
-      if (!g[nick]) g[nick] = {};
-      if (!g[nick][sym]) g[nick][sym] = [];
-      g[nick][sym].push(row);
-    }
-    for (const nick of Object.keys(g)) {
-      for (const sym of Object.keys(g[nick])) {
-        g[nick][sym].sort((a, b) => a.trade_date.localeCompare(b.trade_date));
-      }
-    }
-    return g;
-  }, [transactions]);
-
   const activeAccounts = useMemo(
     () => accounts.filter((a) => a.nickname && a.status === "open"),
     [accounts],
@@ -102,7 +98,7 @@ export default function App() {
       : <AccountTabs
           t={t}
           accounts={activeAccounts}
-          grouped={grouped}
+          stocks={stocks}
           lastFetched={lastFetched}
           lang={lang}
           setLang={setLang}
@@ -111,7 +107,7 @@ export default function App() {
           onMergeAnalysis={mergeAnalysisByAccountId}
           onMergeSnapshots={mergeSnapshotsByAccountId}
           onSetAccounts={setAccounts}
-          onMergeTransactions={mergeTransactionsByAccountId}
+          onMergeStocks={mergeStocksByNickname}
           onUpdateLastFetched={updateLastFetchedEntry}
         />
       }

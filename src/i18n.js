@@ -14,8 +14,10 @@ export const translations = {
     positionsCooldown: (h, m, s) => `Wait ${h}h ${m}m ${s}s`,
     loading: "Loading…",
     noData: "No transactions found",
-    noSymbols: "No transactions for this account",
+    noSymbols: "No active stocks for this account",
     noPositions: "No positions data. Click Refresh Positions to load.",
+    loadTransactions: "Load Transactions",
+    loadTransactionsHint: "Click Load Transactions to view trade history",
     // sub-tabs
     tabTable: "Table",
     tabAnalysis: "Analysis",
@@ -106,8 +108,10 @@ export const translations = {
     positionsCooldown: (h, m, s) => `请等待 ${h}时${m}分${s}秒`,
     loading: "加载中…",
     noData: "暂无交易记录",
-    noSymbols: "此账户暂无交易记录",
+    noSymbols: "此账户暂无活跃股票",
     noPositions: "暂无持仓数据，请点击刷新持仓",
+    loadTransactions: "加载交易记录",
+    loadTransactionsHint: "点击'加载交易记录'查看交易历史",
     // sub-tabs
     tabTable: "交易记录",
     tabAnalysis: "分析",

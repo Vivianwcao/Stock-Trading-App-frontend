@@ -332,7 +332,7 @@ function AllocationChart({ data, t }) {
                 content={<AllocationTooltip />}
               />
               <Legend wrapperStyle={{ fontSize: 10, paddingTop: 2 }} />
-              {symbols.map((sym) => (
+              {[...symbols].reverse().map((sym) => (
                 <Fragment key={sym}>
                   <Bar
                     dataKey={`${sym}_c`}

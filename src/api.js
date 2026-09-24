@@ -22,16 +22,21 @@ async function call(action, data = {}) {
 }
 
 export const api = {
-  // Initial load: accounts + transactions + analysis + snapshots + last_fetched in one shot
+  // Initial load: accounts + stock metadata + analysis + snapshots + last_fetched
+  // No transactions — fetched on demand per nickname
   onPageLoad: () => call("on_page_load"),
 
   // Sync flow: update accounts, then per-account activities, then full tx refresh
   updateAndGetAccounts: () => call("update_and_get_accounts"),
   updateActivitiesByAccount: (account_id) =>
     call("update_activities_by_account", { account_id }),
-  getTransactions: () => call("get_transactions_all_accounts", {}),
 
-  // Per-symbol: returns transactions for that account_id directly
+  // Lazy load: fetch all transactions for a nickname's active stocks on demand
+  // stocks: string[] of symbol names to fetch
+  getTransactionsByNickname: (nickname) =>
+    call("get_transactions_on_recent_active_stocks_by_nickname", { nickname }),
+
+  // Per-symbol: returns updated stocks metadata + transactions for changed symbols
   refreshOrders: (account_id) =>
     call("update_orders_and_get_transactions_by_account", { account_id }),
 
@@ -50,5 +55,8 @@ export const api = {
 
   // Analysis: compare multiple snapshots for one account
   compareAnalysisAcrossSnapshots: (account_id, sync_dates) =>
-    call("compare_analysis_by_account_across_snapshots", { account_id, sync_dates }),
+    call("compare_analysis_by_account_across_snapshots", {
+      account_id,
+      sync_dates,
+    }),
 };

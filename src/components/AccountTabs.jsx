@@ -6,15 +6,6 @@ import Calculator from "./Calculator";
 import AnalysisTable from "./AnalysisTable";
 import AnalysisCharts from "./AnalysisCharts";
 
-function getLatestTradeDate(rows) {
-  for (let i = rows.length - 1; i >= 0; i--) {
-    if (rows[i].type === "BUY" || rows[i].type === "SELL") {
-      return rows[i].trade_date;
-    }
-  }
-  return null;
-}
-
 function getToday() {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Vancouver",
@@ -34,7 +25,9 @@ const DEFAULT_SNAPSHOT_COUNT = 20;
 export default function AccountTabs({
   t,
   accounts,
-  grouped,
+  // stocks: {nickname: [{symbol, latest_date, holding}]} — metadata only, no transactions
+  // Populated from page load. Transactions are fetched lazily per nickname.
+  stocks,
   lastFetched,
   lang,
   setLang,
@@ -43,7 +36,9 @@ export default function AccountTabs({
   onMergeAnalysis,
   onMergeSnapshots,
   onSetAccounts,
-  onMergeTransactions,
+  // Called after an update handler returns new stocks metadata for a nickname.
+  // App.jsx uses this to merge the updated [{symbol, latest_date, holding}] into its stocks state.
+  onMergeStocks,
   onUpdateLastFetched,
 }) {
   const [utilityWidth, setUtilityWidth] = useState(270);
@@ -72,13 +67,23 @@ export default function AccountTabs({
   const [showCharts, setShowCharts] = useState(false);
   const [viewMode, setViewMode] = useState("latest"); // "latest" | "snapshot"
 
+  // Lazy transaction loading state
+  // txLoadedNicks: Set of nicknames whose transactions have been fetched and cached.
+  // Does NOT reset on account tab switch — cache persists for the session.
+  const [txLoading, setTxLoading] = useState(false);
+  const [txLoadError, setTxLoadError] = useState(null);
+  const [txLoadedNicks, setTxLoadedNicks] = useState(new Set());
+
   const isInitialMount = useRef(true);
   const prevNickRef = useRef(null);
   // Network cache: snapshot API responses, keyed by "nickname:date,date,..."
-  // Snapshots are immutable (point-in-time), safe to cache indefinitely, persists across account switches
   const snapshotCacheRef = useRef({});
-  // UI state cache: per-nickname snapshot UI state saved on account switch, restored on return
+  // UI state cache: per-nickname snapshot UI state saved on account switch
   const accountSnapshotStateRef = useRef({});
+  // Transaction cache: {nickname: {symbol: rows[]}}
+  // Populated on demand via loadTransactions or after update handlers.
+  // Persists across account tab switches for the session lifetime.
+  const transactionCacheRef = useRef({});
 
   // Reset per-account UI state when switching accounts (skip initial mount)
   useEffect(() => {
@@ -101,7 +106,7 @@ export default function AccountTabs({
     }
     prevNickRef.current = activeNick;
 
-    // Always reset non-snapshot state
+    // Reset non-persistent UI state
     setActiveSym(null);
     setHypotheticals({});
     setOrderStatus(null);
@@ -112,8 +117,10 @@ export default function AccountTabs({
     setSyncStatus(null);
     setSyncing(false);
     setComparisonLoading(false);
+    setTxLoadError(null);
+    // txLoading and txLoadedNicks intentionally NOT reset — cache persists across tab switches
 
-    // Restore snapshot UI state if we've visited this account before, otherwise use defaults
+    // Restore snapshot UI state if we've visited this account before
     const saved = accountSnapshotStateRef.current[activeNick];
     if (saved) {
       setSelectedSnapshots(saved.selectedSnapshots);
@@ -131,18 +138,25 @@ export default function AccountTabs({
   }, [activeNick]);
 
   const activeAccount = accounts.find((a) => a.nickname === activeNick);
-  const symbols = (activeNick && grouped[activeNick]) || {};
 
+  // Stock metadata for the active nickname: [{symbol, latest_date, holding}]
+  const nickStocks = useMemo(
+    () => stocks[activeNick] || [],
+    [stocks, activeNick],
+  );
+
+  // Symbol list sorted by latest_date desc — derived from metadata, no transaction rows needed
   const symbolList = useMemo(() => {
-    return Object.keys(symbols).sort((a, b) => {
-      const da = getLatestTradeDate(symbols[a]);
-      const db = getLatestTradeDate(symbols[b]);
-      if (!da && !db) return a.localeCompare(b);
-      if (!da) return 1;
-      if (!db) return -1;
-      return db.localeCompare(da);
-    });
-  }, [symbols]);
+    return [...nickStocks]
+      .sort((a, b) => {
+        if (!a.latest_date && !b.latest_date)
+          return a.symbol.localeCompare(b.symbol);
+        if (!a.latest_date) return 1;
+        if (!b.latest_date) return -1;
+        return b.latest_date.localeCompare(a.latest_date);
+      })
+      .map((s) => s.symbol);
+  }, [nickStocks]);
 
   // All physical account IDs that belong to the active nickname group
   const nickAccIds = useMemo(
@@ -159,7 +173,7 @@ export default function AccountTabs({
     [analysis, nickAccIds],
   );
 
-  // All snapshots for this nickname group, sorted newest-first (ignores trigger filter)
+  // All snapshots for this nickname group, sorted newest-first
   const allNickSnapshots = useMemo(
     () =>
       snapshots
@@ -170,7 +184,7 @@ export default function AccountTabs({
     [snapshots, nickAccIds],
   );
 
-  // Snapshots filtered by the trigger toggle (for the visible list)
+  // Snapshots filtered by the trigger toggle
   const accountSnapshots = useMemo(
     () =>
       allNickSnapshots.filter(
@@ -179,7 +193,7 @@ export default function AccountTabs({
     [allNickSnapshots, showAllTriggers],
   );
 
-  // Most recent activities fetch for the active account specifically
+  // Most recent activities fetch for the active account
   const actLastFetched = useMemo(() => {
     if (!activeAccount?.id) return null;
     return (
@@ -207,15 +221,65 @@ export default function AccountTabs({
 
   const currentSym =
     symbolList.includes(activeSym) ? activeSym : symbolList[0] || null;
-  const rows = currentSym ? symbols[currentSym] || [] : [];
-  const lastRow = rows[rows.length - 1];
+
+  // Transactions from local cache — only populated after loadTransactions or a successful update
+  const cachedNickTxns = transactionCacheRef.current[activeNick] || {};
+  const rows = currentSym ? cachedNickTxns[currentSym] || [] : [];
+  const lastRow = rows.length > 0 ? rows[rows.length - 1] : null;
   const currentHyp = currentSym ? (hypotheticals[currentSym] ?? null) : null;
+
+  const txnsLoaded = txLoadedNicks.has(activeNick);
 
   const setHypothetical = (sym, row) => {
     setHypotheticals((prev) => ({ ...prev, [sym]: row }));
   };
 
-  // Per-account sync activities
+  // Merge transactions into cache: full replacement per symbol, other symbols untouched.
+  // The backend returns ALL transactions for the updated symbols (not just deltas),
+  // so overwriting the symbol key is correct.
+  const mergeTxnsIntoCache = (nickname, txns) => {
+    const bySymbol = {};
+    for (const row of txns) {
+      if (!bySymbol[row.symbol]) bySymbol[row.symbol] = [];
+      bySymbol[row.symbol].push(row);
+    }
+    transactionCacheRef.current[nickname] = {
+      ...(transactionCacheRef.current[nickname] || {}),
+      ...bySymbol,
+    };
+  };
+
+  // Load all transactions for the active nickname on demand.
+  // Populates transactionCacheRef[nickname] and marks the nickname as loaded.
+  const loadTransactions = async () => {
+    if (!activeNick || txLoading) return;
+    setTxLoading(true);
+    setTxLoadError(null);
+    try {
+      const symbolNames = nickStocks.map((s) => s.symbol);
+      const res = await api.getTransactionsByNickname(activeNick);
+      if (res.status === "success") {
+        const txns = res.data || [];
+        const bySymbol = {};
+        for (const row of txns) {
+          if (!bySymbol[row.symbol]) bySymbol[row.symbol] = [];
+          bySymbol[row.symbol].push(row);
+        }
+        transactionCacheRef.current[activeNick] = bySymbol;
+        // Adding to the Set triggers re-render, which reads the now-populated cache
+        setTxLoadedNicks((prev) => new Set([...prev, activeNick]));
+      } else {
+        setTxLoadError(res.error || "Failed to load transactions");
+      }
+    } catch (e) {
+      setTxLoadError(e.message || "Failed to load transactions");
+    } finally {
+      setTxLoading(false);
+    }
+  };
+
+  // Sync activities — merges returned stocks metadata into App state,
+  // and merges returned transactions into local cache (only if already loaded).
   const syncActivities = async () => {
     if (!activeAccount?.id) return;
     setSyncing(true);
@@ -229,6 +293,18 @@ export default function AccountTabs({
           ft?.fetched_at ?? (typeof ft === "string" ? ft : null);
         if (timestamp) {
           onUpdateLastFetched("activities", activeAccount.id, timestamp);
+        }
+        // Update stock metadata labels (holding counts, latest_date) in App state
+        const updatedStocks = res.data?.stocks || [];
+        if (updatedStocks.length > 0) {
+          onMergeStocks(activeNick, updatedStocks);
+        }
+        // Merge transactions into cache only if transactions were already loaded.
+        // If not loaded yet, the user's next loadTransactions call hits the backend
+        // which already has the new rows — no partial cache issue.
+        const freshTxns = res.data?.transactions || [];
+        if (freshTxns.length > 0 && txnsLoaded) {
+          mergeTxnsIntoCache(activeNick, freshTxns);
         }
       }
     } catch (e) {
@@ -245,9 +321,13 @@ export default function AccountTabs({
       const res = await api.refreshOrders(activeAccount.id);
       setOrderStatus(res);
       if (res.status === "success") {
+        const updatedStocks = res.data?.stocks || [];
+        if (updatedStocks.length > 0) {
+          onMergeStocks(activeNick, updatedStocks);
+        }
         const freshTxns = res.data?.transactions || [];
-        if (freshTxns.length > 0) {
-          onMergeTransactions(activeAccount.id, freshTxns);
+        if (freshTxns.length > 0 && txnsLoaded) {
+          mergeTxnsIntoCache(activeNick, freshTxns);
         }
         const ft = res.data?.fetched_at;
         const timestamp =
@@ -316,7 +396,6 @@ export default function AccountTabs({
     const selectedArr = [...selectedSnapshots].sort();
     const cacheKey = `${activeNick}:${selectedArr.join(",")}`;
 
-    // Snapshots are immutable; serve from cache on repeat access
     if (snapshotCacheRef.current[cacheKey]) {
       setComparisonData(snapshotCacheRef.current[cacheKey]);
       setViewMode("snapshot");
@@ -341,7 +420,7 @@ export default function AccountTabs({
           );
       if (res.status === "success") {
         const freshData = res.data || [];
-        snapshotCacheRef.current[cacheKey] = freshData; // populate cache
+        snapshotCacheRef.current[cacheKey] = freshData;
         setComparisonData(freshData);
         setViewMode("snapshot");
         if (selectedArr.length > 1) setShowCharts(true);
@@ -438,7 +517,7 @@ export default function AccountTabs({
   // last_successful_sync from the analysis rows for this account
   const positionsLastSync = analysisRows[0]?.last_successful_sync ?? null;
 
-  // Analysis totals — from cached rows in latest mode, from loaded data in single-snapshot mode
+  // Analysis totals
   const analysisTotalBought = analysisRows[0]?.total_bought ?? null;
   const analysisTotalCurrent = analysisRows[0]?.total_current ?? null;
 
@@ -450,12 +529,10 @@ export default function AccountTabs({
     viewMode === "latest" ? analysisTotalCurrent : (
       (comparisonData[0]?.total_current ?? null)
     );
-  // Show summary in latest mode and single-snapshot mode; hide in multi-snapshot compare
   const showSummary =
     selectedSnapshots.size <= 1 &&
     (summaryBought != null || summaryCurrent != null);
 
-  // Data to render — cached analysis rows in "latest" mode, fetched data in "snapshot" mode
   const activeChartData = viewMode === "latest" ? analysisRows : comparisonData;
   const activeTableRows = viewMode === "latest" ? analysisRows : comparisonData;
 
@@ -486,12 +563,13 @@ export default function AccountTabs({
         {/* Account tabs */}
         <div className="account-tabs">
           {accounts.map((acc) => {
-            const accSymbols = grouped[acc.nickname] || {};
-            const hasToday = Object.values(accSymbols).some((rows) =>
-              rows.some((r) => r.trade_date?.slice(0, 10) === today),
+            // hasToday: any stock for this nickname had a trade today
+            // Uses latest_date from metadata — no transaction rows needed
+            const nickStocksForAcc = stocks[acc.nickname] || [];
+            const hasToday = nickStocksForAcc.some(
+              (s) => s.latest_date?.slice(0, 10) === today,
             );
 
-            // Filter analysis by account_id (not nickname)
             const accAnalysis = analysis.filter((r) => r.account_id === acc.id);
             const tabTotalBought = accAnalysis[0]?.total_bought ?? null;
             const analysisCurrent = accAnalysis[0]?.total_current ?? null;
@@ -578,11 +656,16 @@ export default function AccountTabs({
             )}
         </div>
 
-        {/* Content area — scrollable so charts don't get clipped */}
+        {/* Content area */}
         <div className="content-scroll">
           {activeSubTab === "table" ?
             symbolList.length === 0 ?
               <div className="status-msg">{t.noSymbols}</div>
+            : !txnsLoaded ?
+              <div className="status-msg">
+                {t.loadTransactionsHint ??
+                  "Click Load Transactions to view trade history"}
+              </div>
             : <TransactionTable t={t} rows={rows} hypothetical={currentHyp} />
           : /* Analysis sub-tab */
           comparisonLoading ?
@@ -635,35 +718,58 @@ export default function AccountTabs({
               </div>
             </div>
 
-            {/* Symbol tabs */}
+            {/* Load Transactions — shown until transactions are fetched for this nickname */}
+            {!txnsLoaded && (
+              <div className="sync-section">
+                <button
+                  className="btn btn-primary btn-sync"
+                  onClick={loadTransactions}
+                  disabled={txLoading || nickStocks.length === 0}>
+                  {txLoading ?
+                    t.loading
+                  : `${t.loadTransactions ?? "Load Transactions"}: ${activeNick}`
+                  }
+                </button>
+                {txLoadError && (
+                  <div className="sync-status">
+                    <span className="sync-msg fail">{txLoadError}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Symbol tabs — built from metadata, no transactions needed */}
             <div className="symbol-tabs-area">
               <div className="stock-tabs">
-                {symbolList.map((sym) => {
-                  const symRows = symbols[sym];
-                  const last = symRows[symRows.length - 1];
-                  const isHeld = last && last.holdings_per_cycle > 0;
-                  const hasToday = symRows.some(
-                    (r) => r.trade_date?.slice(0, 10) === today,
-                  );
-                  return (
-                    <button
-                      key={sym}
-                      className={`stock-tab ${sym === currentSym ? "active" : ""} ${!isHeld ? "closed" : ""} ${hasToday ? "tab-today" : ""}`}
-                      onClick={() => setActiveSym(sym)}>
-                      {sym}
-                      {isHeld && (
-                        <span className="units-badge">
-                          {last.holdings_per_cycle}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
+                {nickStocks
+                  .slice()
+                  .sort((a, b) => {
+                    if (!a.latest_date && !b.latest_date)
+                      return a.symbol.localeCompare(b.symbol);
+                    if (!a.latest_date) return 1;
+                    if (!b.latest_date) return -1;
+                    return b.latest_date.localeCompare(a.latest_date);
+                  })
+                  .map(({ symbol: sym, holding, latest_date }) => {
+                    const isHeld = holding > 0;
+                    const hasToday = latest_date?.slice(0, 10) === today;
+                    return (
+                      <button
+                        key={sym}
+                        className={`stock-tab ${sym === currentSym ? "active" : ""} ${!isHeld ? "closed" : ""} ${hasToday ? "tab-today" : ""}`}
+                        onClick={() => setActiveSym(sym)}>
+                        {sym}
+                        {isHeld && (
+                          <span className="units-badge">{holding}</span>
+                        )}
+                      </button>
+                    );
+                  })}
               </div>
             </div>
 
-            {/* Calculator */}
-            {currentSym && (
+            {/* Calculator — only shown after transactions are loaded */}
+            {currentSym && txnsLoaded && (
               <Calculator
                 t={t}
                 symbol={currentSym}
@@ -679,7 +785,7 @@ export default function AccountTabs({
               />
             )}
           </>
-        : /* Analysis mode: Refresh Positions + snapshot selector + rank */
+        : /* Analysis mode */
           <div className="analysis-controls">
             {/* Refresh Positions button */}
             <div className="analysis-refresh">
@@ -701,7 +807,7 @@ export default function AccountTabs({
               </div>
             </div>
 
-            {/* Account totals summary — latest mode or single snapshot */}
+            {/* Account totals summary */}
             {showSummary && (
               <div className="analysis-summary">
                 {summaryBought != null && (
@@ -727,7 +833,7 @@ export default function AccountTabs({
               </div>
             )}
 
-            {/* ── View mode: Latest Cycle vs Snapshot(s) ────────────────── */}
+            {/* View mode: Latest Cycle vs Snapshot(s) */}
             <div className="analysis-mode-toggle">
               <button
                 className={`mode-btn ${viewMode === "latest" ? "active" : ""}`}
@@ -742,7 +848,7 @@ export default function AccountTabs({
               </button>
             </div>
 
-            {/* ── Table / Charts toggle ─────────────────────────────────── */}
+            {/* Table / Charts toggle */}
             <div className="chart-view-toggle">
               <button
                 className={`chart-view-opt ${!showCharts ? "active" : ""}`}
@@ -757,7 +863,7 @@ export default function AccountTabs({
               </button>
             </div>
 
-            {/* ── Load Analysis — above snapshot list for quick access ───── */}
+            {/* Load Analysis — above snapshot list */}
             {viewMode === "snapshot" && (
               <button
                 className="snapshot-load-btn"
@@ -769,7 +875,7 @@ export default function AccountTabs({
               </button>
             )}
 
-            {/* ── Chart nav — jump to each chart section ────────────────── */}
+            {/* Chart nav */}
             {showCharts && (
               <div className="chart-nav">
                 <span className="chart-nav-label">
@@ -793,7 +899,7 @@ export default function AccountTabs({
               </div>
             )}
 
-            {/* Rank selector — only relevant for table view */}
+            {/* Rank selector */}
             {!showCharts && (
               <div className="rank-selector">
                 <span className="rank-label">{t.rankBy}</span>
@@ -808,7 +914,7 @@ export default function AccountTabs({
               </div>
             )}
 
-            {/* ── Snapshot selector — only in snapshot mode ─────────────── */}
+            {/* Snapshot selector */}
             {viewMode === "snapshot" && allNickSnapshots.length > 0 && (
               <div className="snapshot-selector">
                 <div className="snapshot-header">

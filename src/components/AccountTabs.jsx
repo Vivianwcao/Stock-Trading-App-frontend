@@ -722,8 +722,11 @@ export default function AccountTabs({
           {/* Sync + Orders — always rendered to reserve layout space; hidden until txnsLoaded */}
           <div
             className="bar-actions"
-            style={{ visibility: txnsLoaded ? "visible" : "hidden" }}
-            aria-hidden={!txnsLoaded}>
+            style={{
+              visibility:
+                txnsLoaded && activeSubTab === "table" ? "visible" : "hidden",
+            }}
+            aria-hidden={!txnsLoaded || activeSubTab === "analysis"}>
             <div className="bar-action-group">
               <button
                 className="btn btn-primary bar-btn"

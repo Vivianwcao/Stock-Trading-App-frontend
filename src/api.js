@@ -4,19 +4,36 @@
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
+// Module-level password — set once on unlock, cleared on 401
+let _password = null;
+
+export function setPassword(pwd) {
+  _password = pwd;
+}
+
+export function clearPassword() {
+  _password = null;
+}
+
 async function call(action, data = {}) {
+  const headers = { "Content-Type": "application/json" };
+  if (_password) headers["x-app-password"] = _password;
+
   const res = await fetch(BASE_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify({ action, data }),
   });
+
   if (!res.ok) {
     let detail = `HTTP ${res.status}`;
     try {
       const body = await res.json();
       detail = body?.detail || body?.error || body?.message || detail;
     } catch (_) {}
-    throw new Error(detail);
+    const err = new Error(detail);
+    if (res.status === 401) err.unauthorized = true;
+    throw err;
   }
   return res.json();
 }

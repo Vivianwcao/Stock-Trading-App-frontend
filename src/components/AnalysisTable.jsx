@@ -1,7 +1,11 @@
 import { fmtPrice, fmtUnits, fmtCAD, fmtPct } from "../utils/format";
 
 // Columns where higher = better (sort descending so best position is first)
-const DESCENDING_COLS = new Set(["bought_ratio", "current_ratio", "growth_percentage"]);
+const DESCENDING_COLS = new Set([
+  "bought_ratio",
+  "current_ratio",
+  "growth_percentage",
+]);
 
 // rows: filtered to the active account's account_id, from the analysis view
 // rankCol: "bought_ratio" | "current_ratio" | "growth_percentage" | "cost_basis"
@@ -42,7 +46,9 @@ export default function AnalysisTable({ t, rows, rankCol }) {
                 <strong>{row.symbol}</strong>
               </td>
               <td className="num">{fmtUnits(row.holdings)}</td>
-              <td className="num">{fmtPrice(row.cost_basis)}</td>
+              <td className="num cost-basis-cell">
+                {fmtPrice(row.cost_basis)}
+              </td>
               <td className="num">{fmtPrice(row.current_price)}</td>
               <td
                 className={`num rank-col ${

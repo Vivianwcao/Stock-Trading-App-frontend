@@ -1,11 +1,26 @@
 import { useState, useEffect, useMemo } from "react";
-import { api } from "./api";
+import { api, setPassword, clearPassword } from "./api";
 import { translations } from "./i18n";
 import AccountTabs from "./components/AccountTabs";
+import PasswordGate from "./components/PasswordGate";
+
+function getStoredPassword() {
+  try {
+    return sessionStorage.getItem("app_pw") || null;
+  } catch {
+    return null;
+  }
+}
 
 export default function App() {
   const [lang, setLang] = useState("en");
   const t = translations[lang];
+
+  // authenticated: true only after a successful loadPageData().
+  // Gate stays visible until this is true.
+  const [authenticated, setAuthenticated] = useState(false);
+  const [authError, setAuthError] = useState(null);
+  const [gateLoading, setGateLoading] = useState(false);
 
   const [accounts, setAccounts] = useState([]);
   // stocks: {nickname: [{symbol, latest_date, holding}]}
@@ -14,16 +29,10 @@ export default function App() {
   const [lastFetched, setLastFetched] = useState([]);
   const [analysis, setAnalysis] = useState([]);
   const [snapshots, setSnapshots] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    loadPageData()
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, []);
-
-  // Single call: loads accounts, stock metadata, analysis, snapshots, last_fetched
+  // Single call: loads accounts, stock metadata, analysis, snapshots, last_fetched.
+  // Used as both the password verifier and the initial data loader.
   const loadPageData = async () => {
     const res = await api.onPageLoad();
     if (res.status === "success") {
@@ -32,7 +41,6 @@ export default function App() {
       setAnalysis(d.analysis || []);
       setSnapshots(d.snapshots || []);
       setLastFetched(d.last_fetched || []);
-      // Group flat stocks array by nickname
       const rawStocks = d.stocks || [];
       const grouped = {};
       for (const s of rawStocks) {
@@ -45,6 +53,46 @@ export default function App() {
       throw new Error(res.error || "Failed to load data");
     }
   };
+
+  // Attempt to authenticate with a given password.
+  // Gate stays open the whole time — only closes on success.
+  const attemptAuth = async (pwd) => {
+    setPassword(pwd);
+    setAuthError(null);
+    setGateLoading(true);
+    try {
+      await loadPageData();
+      // Success — persist and unlock
+      try {
+        sessionStorage.setItem("app_pw", pwd);
+      } catch {}
+      setAuthenticated(true);
+    } catch (e) {
+      clearPassword();
+      if (e.unauthorized) {
+        // 401: wrong password — clear stored password, show backend's message
+        try {
+          sessionStorage.removeItem("app_pw");
+        } catch {}
+        setAuthError(e.message);
+      } else {
+        // Network error, backend crash, etc. — keep stored password (may still be valid),
+        // show what went wrong so the user knows it's not a password issue
+        setAuthError(`Connection failed: ${e.message || "Failed to fetch"}`);
+      }
+    } finally {
+      setGateLoading(false);
+    }
+  };
+
+  // On mount: restore stored password and auto-verify (gate stays open during check)
+  useEffect(() => {
+    const stored = getStoredPassword();
+    if (stored) attemptAuth(stored);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Called by PasswordGate on form submit
+  const handleUnlock = (pwd) => attemptAuth(pwd);
 
   // Merge updated stock metadata for a nickname.
   // Called after update handlers return new stocks (updated symbols only).
@@ -89,11 +137,19 @@ export default function App() {
     [accounts],
   );
 
+  if (!authenticated) {
+    return (
+      <PasswordGate
+        authError={authError}
+        loading={gateLoading}
+        onUnlock={handleUnlock}
+      />
+    );
+  }
+
   return (
     <div className="app">
-      {loading ?
-        <div className="status-msg">{t.loading}</div>
-      : error ?
+      {error ?
         <div className="status-msg error">{error}</div>
       : <AccountTabs
           t={t}

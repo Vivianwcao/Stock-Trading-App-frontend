@@ -131,6 +131,53 @@
   background: var(--bg);
 }
 
+/* ── Password gate ────────────────────────────────────────────────────────── */
+.password-gate {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+.password-gate-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 32px;
+  width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.password-gate-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+.password-gate-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.password-gate-input {
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  width: 100%;
+}
+.password-gate-input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+.password-gate-error {
+  font-size: 12px;
+  color: var(--neg);
+}
+
 /* ── App-like layout (no page scroll) ────────────────────────────────────── */
 .app {
   display: flex;
@@ -357,7 +404,7 @@ button {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  margin-top: 4px;
+  margin-top: 0px;
 }
 .updated-stock-chip {
   font-size: 0.72rem;
@@ -461,13 +508,14 @@ button {
   white-space: nowrap;
 }
 .tab-type {
-  font-size: 9px;
+  font-size: 9.5px;
   color: var(--text-muted);
   letter-spacing: 0.5px;
   text-transform: uppercase;
 }
 .tab-sync {
-  font-size: 10px;
+  font-size: 9.5px;
+  font-weight: 500;
   color: var(--text-muted);
   white-space: nowrap;
 }
@@ -670,6 +718,11 @@ button {
 /* Analysis table: faint alternating rows */
 .analysis-table tbody tr:nth-child(even) {
   background: rgba(0, 0, 0, 0.03);
+}
+/* Cost basis column: bold + dark purple emphasis */
+.analysis-table .cost-basis-cell {
+  font-weight: 700;
+  color: var(--analysis-accent-em);
 }
 
 /* Type badges */
@@ -931,11 +984,11 @@ button {
 /* ── Bar action buttons (Sync + Refresh Orders in sub-tabs row) ───────────── */
 .bar-actions {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   align-items: flex-start;
   align-self: flex-start; /* stay pinned to top of the bar */
   margin-left: auto; /* push to right end of the bar */
-  padding: 0px 6px 0px 0; /* 5px top matches .sub-tab top padding; minimal bottom */
+  padding: 0px 6px 2px 0; /* 5px top matches .sub-tab top padding; minimal bottom */
 }
 .bar-action-group {
   display: flex;
@@ -952,7 +1005,8 @@ button {
   line-height: 1.4;
 }
 .bar-last-fetch {
-  font-size: 9px;
+  font-size: 9.5px;
+  font-weight: 500;
   color: var(--text-muted);
   white-space: nowrap;
   line-height: 1;

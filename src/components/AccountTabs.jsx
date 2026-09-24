@@ -719,40 +719,61 @@ export default function AccountTabs({
                 }
               </span>
             )}
-          {/* Sync + Orders — always rendered to reserve layout space; hidden until txnsLoaded */}
+          {/* Bar actions — always rendered to reserve layout space.
+              Table tab: hidden until txnsLoaded, then shows Sync + Orders.
+              Analysis tab: always visible, shows Refresh Positions. */}
           <div
             className="bar-actions"
             style={{
               visibility:
-                txnsLoaded && activeSubTab === "table" ? "visible" : "hidden",
+                activeSubTab === "analysis" || txnsLoaded ?
+                  "visible"
+                : "hidden",
             }}
-            aria-hidden={!txnsLoaded || activeSubTab === "analysis"}>
-            <div className="bar-action-group">
-              <button
-                className="btn btn-primary bar-btn"
-                onClick={syncActivities}
-                disabled={syncing || !txnsLoaded}>
-                {syncing ? t.syncing : t.syncActivities}
-              </button>
-              {actLastFetched && !syncing && (
-                <span className="bar-last-fetch">
-                  {fmtVancouver(actLastFetched)}
-                </span>
-              )}
-            </div>
-            <div className="bar-action-group">
-              <button
-                className="btn btn-refresh bar-btn"
-                onClick={refreshOrders}
-                disabled={refreshing || !txnsLoaded}>
-                {refreshing ? t.refreshing : t.refreshOrders}
-              </button>
-              {ordLastFetched && !refreshing && (
-                <span className="bar-last-fetch">
-                  {fmtVancouver(ordLastFetched)}
-                </span>
-              )}
-            </div>
+            aria-hidden={activeSubTab !== "analysis" && !txnsLoaded}>
+            {activeSubTab === "table" ?
+              <>
+                <div className="bar-action-group">
+                  <button
+                    className="btn btn-primary bar-btn"
+                    onClick={syncActivities}
+                    disabled={syncing || !txnsLoaded}>
+                    {syncing ? t.syncing : t.syncActivities}
+                  </button>
+                  {actLastFetched && !syncing && (
+                    <span className="bar-last-fetch">
+                      {fmtVancouver(actLastFetched)}
+                    </span>
+                  )}
+                </div>
+                <div className="bar-action-group">
+                  <button
+                    className="btn btn-refresh bar-btn"
+                    onClick={refreshOrders}
+                    disabled={refreshing || !txnsLoaded}>
+                    {refreshing ? t.refreshing : t.refreshOrders}
+                  </button>
+                  {ordLastFetched && !refreshing && (
+                    <span className="bar-last-fetch">
+                      {fmtVancouver(ordLastFetched)}
+                    </span>
+                  )}
+                </div>
+              </>
+            : <div className="bar-action-group">
+                <button
+                  className="btn btn-analysis bar-btn"
+                  onClick={refreshPositions}
+                  disabled={positionsRefreshing}>
+                  {positionsRefreshing ? t.refreshing : t.refreshPositions}
+                </button>
+                {positionsLastSync && !positionsRefreshing && (
+                  <span className="bar-last-fetch">
+                    {fmtVancouver(positionsLastSync)}
+                  </span>
+                )}
+              </div>
+            }
           </div>
         </div>
 
@@ -895,25 +916,12 @@ export default function AccountTabs({
           </>
         : /* Analysis mode */
           <div className="analysis-controls">
-            {/* Refresh Positions button */}
-            <div className="analysis-refresh">
-              <button
-                className="btn btn-analysis"
-                onClick={refreshPositions}
-                disabled={positionsRefreshing}>
-                {positionsRefreshing ?
-                  t.refreshing
-                : `${t.refreshPositions}: ${activeNick}`}
-              </button>
-              <div className="sync-status" style={{ marginTop: "4px" }}>
-                {renderPositionStatus()}
-                {positionsLastSync && !positionsRefreshing && (
-                  <span className="last-fetch-line">
-                    {t.lastPositionsSync}: {fmtVancouver(positionsLastSync)}
-                  </span>
-                )}
+            {/* Position status — button moved to bar-actions */}
+            {(positionsRefreshing || positionStatus) && (
+              <div className="analysis-refresh">
+                <div className="sync-status">{renderPositionStatus()}</div>
               </div>
-            </div>
+            )}
 
             {/* Account totals summary */}
             {showSummary && (

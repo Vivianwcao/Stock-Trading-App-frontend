@@ -73,6 +73,8 @@ export default function AccountTabs({
   const [txLoading, setTxLoading] = useState(false);
   const [txLoadError, setTxLoadError] = useState(null);
   const [txLoadedNicks, setTxLoadedNicks] = useState(new Set());
+  // Per-symbol load state (for old/inactive stocks not included in bulk load)
+  const [symTxLoading, setSymTxLoading] = useState(false);
 
   const isInitialMount = useRef(true);
   const prevNickRef = useRef(null);
@@ -256,7 +258,6 @@ export default function AccountTabs({
     setTxLoading(true);
     setTxLoadError(null);
     try {
-      const symbolNames = nickStocks.map((s) => s.symbol);
       const res = await api.getTransactionsByNickname(activeNick);
       if (res.status === "success") {
         const txns = res.data || [];
@@ -275,6 +276,33 @@ export default function AccountTabs({
       setTxLoadError(e.message || "Failed to load transactions");
     } finally {
       setTxLoading(false);
+    }
+  };
+
+  // Load transactions for a single symbol — used for old/inactive stocks not in 90-day bulk load.
+  // Requires backend: get_all_transactions_by_symbol_by_nickname
+  const loadTransactionsBySymbol = async (symbol) => {
+    if (!activeNick || !symbol || symTxLoading) return;
+    setSymTxLoading(true);
+    try {
+      const res = await api.getTransactionsBySymbol(activeNick, symbol);
+      if (res.status === "success") {
+        const txns = res.data || [];
+        const bySym = {};
+        for (const row of txns) {
+          if (!bySym[row.symbol]) bySym[row.symbol] = [];
+          bySym[row.symbol].push(row);
+        }
+        transactionCacheRef.current[activeNick] = {
+          ...(transactionCacheRef.current[activeNick] || {}),
+          ...bySym,
+        };
+        // setSymTxLoading(false) in finally triggers re-render; cache is now populated
+      }
+    } catch (_) {
+      // silent — user can retry by clicking again
+    } finally {
+      setSymTxLoading(false);
     }
   };
 
@@ -445,8 +473,28 @@ export default function AccountTabs({
     if (!syncStatus) return null;
     if (syncStatus.status === "success") {
       const n = syncStatus.data?.rows_updated;
-      const msg = n != null ? t.rowsUpdated(n) : t.syncSuccess;
-      return <span className="sync-msg ok">{msg}</span>;
+      const updatedStocks = syncStatus.data?.stocks || [];
+      return (
+        <>
+          <span className="sync-msg ok">
+            {n != null ? t.rowsUpdated(n) : t.syncSuccess}
+          </span>
+          {updatedStocks.length > 0 && (
+            <div className="updated-stocks">
+              {updatedStocks.map((s) => (
+                <span
+                  key={s.symbol}
+                  className={`updated-stock-chip ${s.holding > 0 ? "held" : "closed"}`}>
+                  {s.symbol}
+                  {s.holding > 0 && (
+                    <span className="chip-holding">{s.holding}</span>
+                  )}
+                </span>
+              ))}
+            </div>
+          )}
+        </>
+      );
     }
     if (syncStatus.status === "cooldown") {
       const {
@@ -469,10 +517,27 @@ export default function AccountTabs({
     if (!orderStatus) return null;
     if (orderStatus.status === "success") {
       const n = orderStatus.data?.rows_updated;
+      const updatedStocks = orderStatus.data?.stocks || [];
       return (
-        <span className="sync-msg ok">
-          {n != null ? t.rowsUpdated(n) : t.ordersSuccess}
-        </span>
+        <>
+          <span className="sync-msg ok">
+            {n != null ? t.rowsUpdated(n) : t.ordersSuccess}
+          </span>
+          {updatedStocks.length > 0 && (
+            <div className="updated-stocks">
+              {updatedStocks.map((s) => (
+                <span
+                  key={s.symbol}
+                  className={`updated-stock-chip ${s.holding > 0 ? "held" : "closed"}`}>
+                  {s.symbol}
+                  {s.holding > 0 && (
+                    <span className="chip-holding">{s.holding}</span>
+                  )}
+                </span>
+              ))}
+            </div>
+          )}
+        </>
       );
     }
     if (orderStatus.status === "cooldown") {
@@ -627,7 +692,7 @@ export default function AccountTabs({
           })}
         </div>
 
-        {/* Sub-tabs: Table | Analysis + active symbol label */}
+        {/* Sub-tabs: Table | Analysis + active symbol label + sync/orders buttons */}
         <div className="sub-tabs-row">
           <div className="sub-tabs">
             <button
@@ -654,7 +719,47 @@ export default function AccountTabs({
                 }
               </span>
             )}
+          {/* Sync + Orders — always rendered to reserve layout space; hidden until txnsLoaded */}
+          <div
+            className="bar-actions"
+            style={{ visibility: txnsLoaded ? "visible" : "hidden" }}
+            aria-hidden={!txnsLoaded}>
+            <div className="bar-action-group">
+              <button
+                className="btn btn-primary bar-btn"
+                onClick={syncActivities}
+                disabled={syncing || !txnsLoaded}>
+                {syncing ? t.syncing : t.syncActivities}
+              </button>
+              {actLastFetched && !syncing && (
+                <span className="bar-last-fetch">
+                  {fmtVancouver(actLastFetched)}
+                </span>
+              )}
+            </div>
+            <div className="bar-action-group">
+              <button
+                className="btn btn-refresh bar-btn"
+                onClick={refreshOrders}
+                disabled={refreshing || !txnsLoaded}>
+                {refreshing ? t.refreshing : t.refreshOrders}
+              </button>
+              {ordLastFetched && !refreshing && (
+                <span className="bar-last-fetch">
+                  {fmtVancouver(ordLastFetched)}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
+
+        {/* Status strip — appears below the bar only when there is something to show */}
+        {txnsLoaded && (syncStatus || orderStatus || syncing || refreshing) && (
+          <div className="bar-status-strip">
+            {(syncing || syncStatus) && renderSyncStatus()}
+            {(refreshing || orderStatus) && renderOrderStatus()}
+          </div>
+        )}
 
         {/* Content area */}
         <div className="content-scroll">
@@ -662,10 +767,53 @@ export default function AccountTabs({
             symbolList.length === 0 ?
               <div className="status-msg">{t.noSymbols}</div>
             : !txnsLoaded ?
-              <div className="status-msg">
-                {t.loadTransactionsHint ??
-                  "Click Load Transactions to view trade history"}
+              <div className="load-prompt">
+                <p className="load-prompt-hint">{t.loadTransactionsHint}</p>
+                <button
+                  className="btn btn-orders btn-load-txns"
+                  onClick={loadTransactions}
+                  disabled={txLoading || nickStocks.length === 0}>
+                  {txLoading ?
+                    t.loading
+                  : `${t.pull90DayTransactions}: ${activeNick}`}
+                </button>
+                {txLoadError && (
+                  <span className="sync-msg fail">{txLoadError}</span>
+                )}
               </div>
+            : rows.length === 0 ?
+              (() => {
+                // Three-case distinction based on holding count and 90-day recency
+                const symMeta = nickStocks.find((s) => s.symbol === currentSym);
+                const symHolding = symMeta?.holding ?? 0;
+                const symLatestDate = symMeta?.latest_date ?? null;
+                // Compute 90-day cutoff in Vancouver-local date string (YYYY-MM-DD)
+                const cutoffDate = new Date(today + "T00:00:00");
+                cutoffDate.setDate(cutoffDate.getDate() - 90);
+                const cutoff90 = cutoffDate.toISOString().slice(0, 10);
+                const hasRecent90Day =
+                  symLatestDate && symLatestDate >= cutoff90;
+                // Case 1: has holding, no recent 90-day trades (old stock still held)
+                // Case 2: no holding, has recent 90-day data (recently sold/closed)
+                // Case 3: no holding AND no recent 90-day data (closed and old)
+                const hint =
+                  symHolding > 0 ? `${t.no90DayTxFor} ${currentSym}`
+                  : hasRecent90Day ? `${t.noHoldingsFor} ${currentSym}`
+                  : `${t.noHoldingsAnd90DayFor} ${currentSym}`;
+                return (
+                  <div className="load-prompt">
+                    <p className="load-prompt-hint">{hint}</p>
+                    <button
+                      className="btn btn-orders btn-load-txns"
+                      onClick={() => loadTransactionsBySymbol(currentSym)}
+                      disabled={symTxLoading}>
+                      {symTxLoading ?
+                        t.loading
+                      : `${t.loadAllTxFor} ${currentSym}`}
+                    </button>
+                  </div>
+                );
+              })()
             : <TransactionTable t={t} rows={rows} hypothetical={currentHyp} />
           : /* Analysis sub-tab */
           comparisonLoading ?
@@ -700,44 +848,6 @@ export default function AccountTabs({
 
         {activeSubTab === "table" ?
           <>
-            {/* Sync Activities section */}
-            <div className="sync-section">
-              <button
-                className="btn btn-primary btn-sync"
-                onClick={syncActivities}
-                disabled={syncing}>
-                {syncing ? t.syncing : `${t.syncActivities}: ${activeNick}`}
-              </button>
-              <div className="sync-status">
-                {renderSyncStatus()}
-                {actLastFetched && !syncing && (
-                  <span className="last-fetch-line">
-                    {t.lastSync}: {fmtVancouver(actLastFetched)}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Load Transactions — shown until transactions are fetched for this nickname */}
-            {!txnsLoaded && (
-              <div className="sync-section">
-                <button
-                  className="btn btn-primary btn-sync"
-                  onClick={loadTransactions}
-                  disabled={txLoading || nickStocks.length === 0}>
-                  {txLoading ?
-                    t.loading
-                  : `${t.loadTransactions ?? "Load Transactions"}: ${activeNick}`
-                  }
-                </button>
-                {txLoadError && (
-                  <div className="sync-status">
-                    <span className="sync-msg fail">{txLoadError}</span>
-                  </div>
-                )}
-              </div>
-            )}
-
             {/* Symbol tabs — built from metadata, no transactions needed */}
             <div className="symbol-tabs-area">
               <div className="stock-tabs">
@@ -774,14 +884,9 @@ export default function AccountTabs({
                 t={t}
                 symbol={currentSym}
                 lastRow={lastRow}
-                ordersLastFetched={ordLastFetched}
                 onCalculate={(row) => setHypothetical(currentSym, row)}
                 onClear={() => setHypothetical(currentSym, null)}
                 hasHypothetical={currentHyp !== null}
-                onRefreshOrders={refreshOrders}
-                refreshing={refreshing}
-                renderOrderStatus={renderOrderStatus}
-                nickname={activeNick}
               />
             )}
           </>

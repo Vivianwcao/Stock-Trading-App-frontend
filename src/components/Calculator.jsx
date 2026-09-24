@@ -1,16 +1,9 @@
 import { useState } from "react";
-import {
-  fmtPrice,
-  fmtUnits,
-  fmtCAD,
-  fmtPct,
-  fmtVancouver,
-} from "../utils/format";
+import { fmtPrice, fmtUnits, fmtCAD, fmtPct } from "../utils/format";
 
-// avg_cost in the DB may be negative - use Math.abs() throughout
-function getAbsAvgCost(lastRow) {
+function getAvgCost(lastRow) {
   if (!lastRow || lastRow.avg_cost == null) return null;
-  return Math.abs(lastRow.avg_cost);
+  return lastRow.avg_cost;
 }
 
 function computeBuy(avgCost, currentHoldings, price, units) {
@@ -19,7 +12,7 @@ function computeBuy(avgCost, currentHoldings, price, units) {
   const newAvgCost = newHoldings > 0 ? newInvested / newHoldings : 0;
   return {
     newHoldings,
-    newAvgCost: newHoldings > 0 ? -(newInvested / newHoldings) : 0,
+    newAvgCost,
     projectedPL: null,
     projectedReturn: null,
     amount: -(price * units),
@@ -34,7 +27,7 @@ function computeSell(avgCost, currentHoldings, price, units) {
     costBasis > 0 ? (projectedPL / costBasis) * 100 : null;
   return {
     newHoldings: currentHoldings - units,
-    newAvgCost: -avgCost,
+    newAvgCost: avgCost,
     projectedPL,
     projectedReturn,
     amount: proceeds,
@@ -46,14 +39,9 @@ export default function Calculator({
   symbol,
   lastRow,
   accountBalance,
-  ordersLastFetched,
   onCalculate,
   onClear,
   hasHypothetical,
-  onRefreshOrders,
-  refreshing,
-  renderOrderStatus,
-  nickname,
 }) {
   const [price, setPrice] = useState("");
   const [units, setUnits] = useState("");
@@ -61,7 +49,7 @@ export default function Calculator({
   const [preview, setPreview] = useState(null);
   const [err, setErr] = useState("");
 
-  const avgCost = getAbsAvgCost(lastRow);
+  const avgCost = getAvgCost(lastRow);
   // holdings_per_cycle is the correct field name (rolling_units does not exist on transaction rows)
   const currentHoldings = lastRow?.holdings_per_cycle ?? 0;
 
@@ -114,24 +102,12 @@ export default function Calculator({
         <span className="calc-symbol">{symbol}</span>
       </div>
 
-      {/* Action buttons + order status */}
-      <div className="calc-actions">
-        <button
-          className="btn btn-orders"
-          onClick={onRefreshOrders}
-          disabled={refreshing}>
-          {refreshing ? t.refreshing : `${t.refreshOrders}: ${nickname}`}
-        </button>
-        {hasHypothetical && (
+      {/* Clear All — only when a hypothetical is active */}
+      {hasHypothetical && (
+        <div className="calc-actions">
           <button className="btn btn-ghost" onClick={handleClear}>
             {t.clearAll}
           </button>
-        )}
-        {renderOrderStatus()}
-      </div>
-      {ordersLastFetched && (
-        <div className="last-fetch-line">
-          {t.lastOrders}: {fmtVancouver(ordersLastFetched)}
         </div>
       )}
 

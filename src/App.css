@@ -9,47 +9,117 @@
   padding: 0;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   DESIGN TOKENS — all colours live here. Change a value once; every rule
+   that uses the variable updates automatically.
+   ═══════════════════════════════════════════════════════════════════════════ */
 :root {
+  /* ── Surfaces ─────────────────────────────────────────────────────────── */
   --bg: #f7f7f7;
   --surface: #ffffff;
+  --surface-2: #f1f5f9; /* chip / card secondary surface          */
+
+  /* ── Borders ──────────────────────────────────────────────────────────── */
   --border: #dee2e6;
   --border-light: #e9ecef;
+
+  /* ── Text ─────────────────────────────────────────────────────────────── */
   --text: #212529;
   --text-muted: #6c757d;
-  --primary: #3d68ae;
-  --primary-em: #2b497a;
   --secondary: #6c757d;
+
+  /* ── Primary (blue — Sync Activities, stock tabs, links) ─────────────── */
+  --primary: #3d68ae;
+  --primary-em: #2b497a; /* hover / emphasis                       */
+
+  /* ── Action type colours ──────────────────────────────────────────────── */
   --buy: #166534;
   --buy-bg: rgb(197, 235, 206);
   --sell: #7f2222;
   --sell-bg: #f3d7d7;
   --div: #204786;
   --div-bg: #d6e6fb;
-  --dividend_bg: #ecf7ff;
+  --dividend-bg: #ecf7ff;
   --other: #59279c;
   --other-bg: #ede8fd;
+
+  /* ── P&L ──────────────────────────────────────────────────────────────── */
   --pos: #166534;
   --neg: #af2c04;
+
+  /* ── Hypothetical row ─────────────────────────────────────────────────── */
   --hyp-bg: #feee94;
   --hyp-border: #ffde5c;
+
+  /* ── Refresh Orders button (green) ───────────────────────────────────── */
+  --orders: #3a8455;
+  --orders-em: #146c34; /* hover                                  */
+
+  /* ── Sync Activities / Load Transactions button (same as --primary) ───── */
+  /* No separate variable needed — those buttons use btn-primary             */
+
+  /* ── Refresh Positions button (terracotta, also used for Table sub-tab) ─ */
   --refresh-btn-bg: #bb6334;
-  --refresh-btn-em: #a45121;
-  /* Analysis tab / Refresh Positions theme (muted purple) */
+  --refresh-btn-em: #a45121; /* hover                                  */
+
+  /* ── Analysis tab / Refresh Positions button (muted purple) ─────────── */
   --analysis-accent: #694bc3;
   --analysis-accent-em: #5c3d8a;
-  --analysis-tab-bg: #694bc3;
-  /* Table sub-tab background (warm terracotta) */
-  --table-tab-bg: #bb6334;
-  /* ── Chart view toggle (Table / Charts) ── change these to restyle it */
+  --analysis-tab-bg: #694bc3; /* active analysis sub-tab fill        */
+
+  /* ── Table sub-tab background (warm terracotta) ──────────────────────── */
+  --table-tab-bg: #bb6334; /* active table sub-tab fill           */
+
+  /* ── Sub-tab inactive / hover tints ─────────────────────────────────── */
+  --table-tab-inactive: #fdf4ef;
+  --table-tab-hover: #f5e4d5;
+  --analysis-tab-inactive: #f0ebf8;
+  --analysis-tab-hover: #e2d8f0;
+
+  /* ── Account tab ──────────────────────────────────────────────────────── */
+  --account-tab-hover: #edf0f3;
+  --badge-new-text: #92400e; /* "NEW" badge text (bg = --hyp-bg)    */
+
+  /* ── Symbol column in analysis table ─────────────────────────────────── */
+  --sym-col-text: #1e3566;
+
+  /* ── Alternating row in transaction table ─────────────────────────────── */
+  --cycle-alt-bg: #f0f7f0;
+
+  /* ── Updated-stock chips (shown after sync / orders) ─────────────────── */
+  --held-chip-bg: #dcfce7;
+  --held-chip-text: #15803d;
+  --closed-chip-bg: #f1f5f9; /* same as --surface-2                 */
+  --closed-chip-text: #6c757d; /* same as --text-muted                */
+
+  /* ── Snapshot trigger badges ─────────────────────────────────────────── */
+  --badge-manual-bg: #fef3c722;
+  --badge-manual-text: #b45309;
+  --badge-manual-border: #f59e0b66;
+  --badge-scheduled-bg: #dbeafe44;
+  --badge-scheduled-text: #1d4ed8;
+  --badge-scheduled-border: #3b82f666;
+
+  /* ── Chart view toggle (Table / Charts) ─────────────────────────────── */
   --chart-toggle-track: #dce3ea; /* outer track background              */
   --chart-toggle-active: #6e8fa8; /* fill of the selected nub            */
-  /* ── Rank selector buttons ── change these to restyle the rank list */
-  --rank-inactive-bg: #f4f0fb; /* inactive button background              */
-  --rank-inactive-border: #d4c6f0; /* inactive button border                  */
-  --rank-inactive-text: #7c5cbf; /* inactive button text                    */
-  --rank-hover-bg: #e9e0f7; /* hover background                        */
-  --rank-active-bg: #9775d0; /* active (selected) button fill           */
-  --rank-active-border: #8861c4; /* active button border                    */
+
+  /* ── Chart navigator buttons ─────────────────────────────────────────── */
+  --chart-nav-bg: #eef2f7;
+  --chart-nav-border: #c8d4e0;
+  --chart-nav-text: #3a5a78;
+  --chart-nav-hover-bg: #dce8f4;
+  --chart-nav-hover-border: #9ab6cf;
+  --chart-nav-hover-text: #1e3a56;
+
+  /* ── Rank selector buttons ────────────────────────────────────────────── */
+  --rank-inactive-bg: #f4f0fb;
+  --rank-inactive-border: #d4c6f0;
+  --rank-inactive-text: #362262;
+  --rank-hover-bg: #e9e0f7;
+  --rank-active-bg: #8776b9;
+  --rank-active-border: #8861c4;
+
   font-family:
     "Inter",
     -apple-system,
@@ -102,7 +172,7 @@
 
 /* Right: sync controls + symbol tabs + calculator */
 .col-utility {
-  /* width is now controlled by inline style (draggable); min/max enforced in JS */
+  /* width is controlled by inline style (draggable); min/max enforced in JS */
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -111,7 +181,7 @@
   overflow-y: auto;
 }
 
-/* ── Utility top: sync button + lang toggle ───────────────────────────────── */
+/* ── Utility top: lang toggle ─────────────────────────────────────────────── */
 .utility-top {
   display: flex;
   flex-direction: column;
@@ -161,11 +231,9 @@
   gap: 2px;
   margin-left: auto;
 }
-
 .lang-sep {
   color: var(--border);
 }
-
 .lang-btn {
   background: none;
   border: none;
@@ -184,6 +252,11 @@
 }
 
 /* ── Buttons ──────────────────────────────────────────────────────────────── */
+/* overall, to be overriden */
+button {
+  font-weight: 500;
+}
+
 .btn {
   padding: 6px 12px;
   border: none;
@@ -199,6 +272,7 @@
   cursor: not-allowed;
 }
 
+/* Blue — Sync Activities, Load Transactions */
 .btn-primary {
   background: var(--primary);
   color: #fff;
@@ -217,16 +291,25 @@
   color: var(--text);
 }
 
+/* Green — kept for future use */
 .btn-orders {
-  background: var(--refresh-btn-bg);
+  background: var(--orders);
   color: #fff;
-  white-space: nowrap;
 }
 .btn-orders:hover:not(:disabled) {
+  background: var(--orders-em);
+}
+
+/* Terracotta — Refresh Orders (in sub-tabs bar) */
+.btn-refresh {
+  background: var(--refresh-btn-bg);
+  color: #fff;
+}
+.btn-refresh:hover:not(:disabled) {
   background: var(--refresh-btn-em);
 }
 
-/* Analysis tab / Refresh Positions button (muted slate blue) */
+/* Purple — Refresh Positions / Analysis */
 .btn-analysis {
   background: var(--analysis-accent);
   color: #fff;
@@ -236,7 +319,7 @@
   background: var(--analysis-accent-em);
 }
 
-/* outlined "Clear All" button */
+/* Ghost — "Clear All" */
 .btn-ghost {
   background: var(--surface);
   color: var(--neg);
@@ -251,6 +334,48 @@
 }
 .btn-ghost:hover {
   background: var(--sell-bg);
+}
+
+/* ── In-table load prompt (replaces the old utility-panel button) ─────────── */
+.load-prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 40px 24px;
+  text-align: center;
+}
+.load-prompt-hint {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+/* ── Updated-stock chips (shown after sync / orders refresh) ──────────────── */
+.updated-stocks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+.updated-stock-chip {
+  font-size: 0.72rem;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+.updated-stock-chip.held {
+  background: var(--held-chip-bg);
+  color: var(--held-chip-text);
+}
+.updated-stock-chip.closed {
+  background: var(--closed-chip-bg);
+  color: var(--closed-chip-text);
+}
+.chip-holding {
+  margin-left: 4px;
+  opacity: 0.7;
 }
 
 /* ── Status messages ──────────────────────────────────────────────────────── */
@@ -291,7 +416,7 @@
   gap: 2px;
 }
 .account-tab:hover {
-  background: #edf0f3;
+  background: var(--account-tab-hover);
 }
 .account-tab.active {
   background: var(--surface);
@@ -300,15 +425,12 @@
   border-bottom-color: var(--surface);
 }
 
-/* Row 1: nickname (left) + balance (right) */
 .tab-row-1 {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
   gap: 6px;
 }
-
-/* Row 2: account type (left) + last sync (right) */
 .tab-row-2 {
   display: flex;
   justify-content: space-between;
@@ -320,7 +442,7 @@
   font-size: 9px;
   font-weight: 700;
   background: var(--hyp-bg);
-  color: #92400e;
+  color: var(--badge-new-text);
   border-radius: 4px;
   padding: 1px 4px;
   line-height: 1.4;
@@ -349,11 +471,33 @@
   color: var(--text-muted);
   white-space: nowrap;
 }
+.tab-right-values {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+.tab-total-bought {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--neg);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  margin-left: auto;
+}
+.tab-total-current {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--buy);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
 
-/* ── Symbol tabs area — height capped; new sub-tab override below ─────────── */
+/* ── Symbol tabs area ─────────────────────────────────────────────────────── */
 .symbol-tabs-area {
-  min-height: 80px;
-  flex: 1;
+  min-height: 40px;
+  max-height: 44vh;
+  flex: 0 1 auto;
   overflow-y: auto;
 }
 
@@ -388,7 +532,6 @@
 .stock-tab.closed {
   opacity: 0.5;
 }
-
 .stock-tab.tab-today:not(.active) {
   background: var(--hyp-bg);
   border-color: var(--hyp-border);
@@ -409,7 +552,7 @@
 /* ── Transaction table ────────────────────────────────────────────────────── */
 .table-wrapper {
   overflow-x: auto;
-  overflow-y: auto; /* .content-scroll is now a flex column, so this fills its height and scrolls vertically — sticky th works */
+  overflow-y: auto;
   flex: 1;
   min-height: 0;
   border: 1px solid var(--border);
@@ -439,7 +582,6 @@
   white-space: nowrap;
   text-transform: uppercase;
 }
-
 .tx-table td {
   padding: 7px 10px;
   border-bottom: 1px solid var(--border-light);
@@ -452,16 +594,13 @@
 .tx-table tbody tr:hover {
   background: var(--bg);
 }
-
 .tx-table th.num,
 .tx-table td.num {
   text-align: right;
 }
-
 .tx-table td.num {
   letter-spacing: 0em;
 }
-
 .col-type {
   min-width: 72px;
 }
@@ -469,37 +608,68 @@
   min-width: 88px;
 }
 
-/* Emphasized columns: avg cost, realized P&L, return % */
+/* Emphasized columns */
 .tx-table td.col-em {
   font-weight: 700;
 }
 
+/* Symbol column in analysis table */
+.tx-table td.sym-col {
+  color: var(--sym-col-text);
+  font-weight: 800;
+  font-size: 12px;
+}
+
+/* Bold rank-able columns */
+.tx-table td.rank-col {
+  font-weight: 700;
+}
+
+/* Bought Balance — terracotta */
+.tx-table td.rank-bought {
+  color: var(--refresh-btn-em);
+}
+
+/* Current Value — green */
+.tx-table td.rank-current {
+  color: var(--buy);
+}
+
+/* Percentage columns */
+.tx-table td.rank-pct {
+  font-size: 11px;
+}
+
 /* Cycle alternating rows */
 .tx-table tbody tr.cycle-alt {
-  background: #f0f7f0;
+  background: var(--cycle-alt-bg);
 }
 
-/* Row type backgrounds — override cycle */
+/* Dividend rows */
 .tx-table tbody tr.row-dividend {
-  background: var(--dividend_bg);
+  background: var(--dividend-bg);
 }
 
-/* Today's rows — light blue, placed after row-dividend to take priority */
+/* Today's rows */
 .tx-table tbody tr.row-today {
   background: var(--hyp-bg);
 }
 
-/* Hypothetical row — yellow */
+/* Hypothetical row */
 .tx-table tbody tr.row-hypothetical {
   background: var(--hyp-bg);
   border-left: 3px solid var(--hyp-border);
   font-style: italic;
 }
-
 .hyp-label {
   color: var(--text-muted);
   font-style: normal;
   font-size: 10px;
+}
+
+/* Analysis table: faint alternating rows */
+.analysis-table tbody tr:nth-child(even) {
+  background: rgba(0, 0, 0, 0.03);
 }
 
 /* Type badges */
@@ -545,8 +715,6 @@
   border: 1px solid var(--border);
   border-radius: 8px;
 }
-
-/* Title row: label (left) + symbol name (right) */
 .calc-title-row {
   display: flex;
   justify-content: space-between;
@@ -563,7 +731,6 @@
   color: var(--primary);
 }
 
-/* Actions row: Refresh Orders + Clear All + status */
 .calc-actions {
   display: flex;
   align-items: center;
@@ -571,8 +738,6 @@
   flex-wrap: wrap;
   margin-bottom: 2px;
 }
-
-/* Current position summary */
 .calc-context {
   display: flex;
   gap: 12px;
@@ -596,15 +761,12 @@
   font-size: 12px;
   color: var(--text);
 }
-
-/* Inputs */
 .calc-inputs {
   display: flex;
   flex-direction: column;
   gap: 7px;
   margin-bottom: 8px;
 }
-
 .type-toggle {
   display: flex;
   border-radius: 6px;
@@ -657,18 +819,14 @@
   outline: none;
   border-color: var(--primary);
 }
-
-/* Calculate button: full width */
 .calc-btn-calculate {
   width: 100%;
 }
-
 .calc-error {
   font-size: 11px;
   color: var(--neg);
   margin-bottom: 6px;
 }
-
 .calc-preview {
   margin-top: 6px;
   padding: 8px 10px;
@@ -676,7 +834,6 @@
   border: 1px solid var(--hyp-border);
   border-radius: 6px;
 }
-
 .preview-grid {
   display: flex;
   gap: 12px;
@@ -697,17 +854,23 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* ── Sub-tabs (Table | Analysis) ─────────────────────────────────────────── */
+/* ── Sub-tabs row (Table | Analysis) ─────────────────────────────────────── */
+.sub-tabs-row {
+  display: flex;
+  align-items: stretch; /* tabs fill full bar height */
+  gap: 10px;
+  border-bottom: 2px solid var(--border);
+  /* no min-height — bar-actions is always rendered, so height is determined by its content */
+}
 .sub-tabs {
   display: flex;
   gap: 0;
-  align-self: flex-start;
+  align-self: stretch; /* fill full bar height so tabs reach the bottom border */
   width: 200px;
-  border-bottom: 2px solid var(--border);
+  border-bottom: none; /* border is on the row */
   flex-shrink: 0;
   margin-bottom: 0;
 }
-
 .sub-tab {
   flex: 1;
   padding: 5px 8px;
@@ -716,8 +879,8 @@
   border-radius: 4px 4px 0 0;
   margin-bottom: -2px;
   cursor: pointer;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 700;
   font-family: inherit;
   color: var(--text);
   text-align: center;
@@ -727,12 +890,12 @@
   background: var(--bg);
 }
 
-/* Table sub-tab: inactive = light warm tint, active = terracotta */
+/* Table sub-tab */
 .sub-tab.table-tab {
-  background: #fdf4ef;
+  background: var(--table-tab-inactive);
 }
 .sub-tab.table-tab:hover:not(.active) {
-  background: #f5e4d5;
+  background: var(--table-tab-hover);
 }
 .sub-tab.table-tab.active {
   background: var(--table-tab-bg);
@@ -741,12 +904,12 @@
   border-color: var(--refresh-btn-em);
 }
 
-/* Analysis sub-tab: inactive = light purple tint, active = purple */
+/* Analysis sub-tab */
 .sub-tab.analysis-tab {
-  background: #f0ebf8;
+  background: var(--analysis-tab-inactive);
 }
 .sub-tab.analysis-tab:hover:not(.active) {
-  background: #e2d8f0;
+  background: var(--analysis-tab-hover);
 }
 .sub-tab.analysis-tab.active {
   background: var(--analysis-tab-bg);
@@ -755,15 +918,68 @@
   border-color: var(--analysis-accent-em);
 }
 
-/* ── Symbol tabs: cap height so calculator gets more room (40/60 split) ── */
-.symbol-tabs-area {
-  min-height: 40px;
-  max-height: 34vh;
-  flex: 0 1 auto;
-  overflow-y: auto;
+.subtab-active-sym {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text);
+  letter-spacing: 0.04em;
+  padding: 0 4px;
+  opacity: 0.9;
+  align-self: center; /* stay vertically centered in the taller bar */
 }
 
-/* ── Analysis controls (right panel when Analysis sub-tab is active) ──── */
+/* ── Bar action buttons (Sync + Refresh Orders in sub-tabs row) ───────────── */
+.bar-actions {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  align-self: flex-start; /* stay pinned to top of the bar */
+  margin-left: auto; /* push to right end of the bar */
+  padding: 0px 6px 0px 0; /* 5px top matches .sub-tab top padding; minimal bottom */
+}
+.bar-action-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.bar-btn {
+  padding: 4px 9px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  border-radius: 5px;
+  line-height: 1.4;
+}
+.bar-last-fetch {
+  font-size: 9px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  line-height: 1;
+}
+
+/* ── Status strip (below sub-tabs bar, for sync/order messages) ───────────── */
+.bar-status-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  align-items: flex-start;
+  padding: 4px 10px 5px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+
+/* ── Scrollable content area ──────────────────────────────────────────────── */
+.content-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Analysis controls (right panel) ─────────────────────────────────────── */
 .analysis-controls {
   display: flex;
   flex-direction: column;
@@ -771,66 +987,46 @@
   flex: 1;
   overflow-y: auto;
 }
-
-/* ── Snapshot selector ────────────────────────────────────────────────────── */
-.snapshot-selector {
+.analysis-refresh {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  flex: 1;
-  min-height: 0;
+  gap: 0px;
 }
 
-.snapshot-header {
+/* ── Analysis summary block ───────────────────────────────────────────────── */
+.analysis-summary {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  flex-shrink: 0;
 }
-
-.snapshot-label {
+.analysis-summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.analysis-summary-label {
   font-size: 10px;
-  font-weight: 600;
   color: var(--text-muted);
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.3px;
 }
-
-.snapshot-trigger-toggle {
-  display: flex;
-  gap: 3px;
+.analysis-summary-value {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 
-.trigger-btn {
-  padding: 2px 7px;
-  font-size: 10px;
-  font-family: inherit;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--surface);
-  color: var(--text-muted);
-  cursor: pointer;
-}
-.trigger-btn.active {
-  background: var(--primary);
-  color: #fff;
-  border-color: var(--primary);
-  font-weight: 600;
-}
-
-/* ── Analysis view/format controls ──────────────────────────────────────── */
-.analysis-view-controls {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
+/* ── Analysis view / mode toggles ────────────────────────────────────────── */
 .analysis-mode-toggle,
 .analysis-format-toggle {
   display: flex;
   gap: 3px;
 }
-
 .mode-btn,
 .format-btn {
   flex: 1;
@@ -870,7 +1066,115 @@
   cursor: not-allowed;
 }
 
-/* ── Snapshot load button ────────────────────────────────────────────────── */
+/* ── Snapshot selector ────────────────────────────────────────────────────── */
+.snapshot-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-height: 0;
+}
+.snapshot-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.snapshot-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.snapshot-trigger-toggle {
+  display: flex;
+  gap: 3px;
+}
+.trigger-btn {
+  padding: 2px 7px;
+  font-size: 10px;
+  font-family: inherit;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.trigger-btn.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+  font-weight: 600;
+}
+.snapshot-hint {
+  font-size: 10px;
+  color: var(--text-muted);
+  padding: 3px 2px 1px;
+  font-style: italic;
+  line-height: 1.3;
+}
+.snapshot-empty {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 8px 4px;
+  font-style: italic;
+}
+.snapshot-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-weight: 500;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+.snapshot-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--text-muted);
+  border: 1px solid transparent;
+}
+.snapshot-item:hover {
+  background: var(--surface);
+  border-color: var(--border);
+}
+.snapshot-item.checked {
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+  border-color: color-mix(in srgb, var(--primary) 30%, transparent);
+  color: var(--text);
+}
+.snapshot-date {
+  flex: 1;
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+}
+.snapshot-trigger-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.snapshot-trigger-badge.manual {
+  background: var(--badge-manual-bg);
+  color: var(--badge-manual-text);
+  border: 1px solid var(--badge-manual-border);
+}
+.snapshot-trigger-badge.scheduled {
+  background: var(--badge-scheduled-bg);
+  color: var(--badge-scheduled-text);
+  border: 1px solid var(--badge-scheduled-border);
+}
+
+/* ── Snapshot load button ─────────────────────────────────────────────────── */
 .snapshot-load-btn {
   width: 100%;
   margin-top: 4px;
@@ -893,110 +1197,38 @@
   cursor: not-allowed;
 }
 
-/* ── Snapshot hint + empty state ─────────────────────────────────────────── */
-.snapshot-hint {
-  font-size: 10px;
-  color: var(--text-muted);
-  padding: 3px 2px 1px;
-  font-style: italic;
-  line-height: 1.3;
-}
-
-.snapshot-empty {
-  font-size: 11px;
-  color: var(--text-muted);
-  text-align: center;
-  padding: 8px 4px;
-  font-style: italic;
-}
-
-.snapshot-list {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  overflow-y: auto;
-  flex: 1;
-  min-height: 0;
-}
-
-.snapshot-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 6px;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 11px;
-  color: var(--text-muted);
-  border: 1px solid transparent;
-}
-.snapshot-item:hover {
-  background: var(--surface);
-  border-color: var(--border);
-}
-.snapshot-item.checked {
-  background: color-mix(in srgb, var(--primary) 10%, transparent);
-  border-color: color-mix(in srgb, var(--primary) 30%, transparent);
-  color: var(--text);
-}
-.snapshot-item.manual .snapshot-date {
-  color: var(--text-muted);
-}
-
-.snapshot-date {
-  flex: 1;
-  font-variant-numeric: tabular-nums;
-  font-size: 11px;
-}
-
-.snapshot-trigger-badge {
-  font-size: 9px;
-  font-weight: 700;
-  padding: 1px 5px;
-  border-radius: 3px;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-.snapshot-trigger-badge.manual {
-  background: #fef3c722;
-  color: #b45309;
-  border: 1px solid #f59e0b66;
-}
-.snapshot-trigger-badge.scheduled {
-  background: #dbeafe44;
-  color: #1d4ed8;
-  border: 1px solid #3b82f666;
-}
-
-/* ── Analysis charts ─────────────────────────────────────────────────────── */
+/* ── Analysis charts ──────────────────────────────────────────────────────── */
 .analysis-charts {
   display: flex;
   flex-direction: column;
   gap: 24px;
   padding: 8px 0;
 }
-
 .chart-section {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
-
 .chart-title {
   font-size: 13px;
   font-weight: 700;
   color: var(--text);
   margin: 0;
 }
-
+.chart-subtitle {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-left: 4px;
+}
 .chart-scroll-x {
   overflow-x: auto;
 }
 
-/* ── Table / Charts toggle — segmented control: track + floating nub ──────── */
+/* ── Table / Charts toggle — segmented control ────────────────────────────── */
 .chart-view-toggle {
   display: inline-flex;
-  align-self: flex-start; /* shrink to content width — don't stretch to fill parent */
+  align-self: flex-start;
   background: var(--chart-toggle-track);
   border-radius: 14px;
   padding: 2px;
@@ -1031,27 +1263,12 @@
   cursor: not-allowed;
 }
 
-/* ── Chart subtitle annotation ────────────────────────────────────────────── */
-.chart-subtitle {
-  font-size: 10px;
-  font-weight: 400;
-  color: var(--text-muted);
-  margin-left: 4px;
-}
-
-.analysis-refresh {
-  display: flex;
-  flex-direction: column;
-  gap: 0px;
-}
-
-/* ── Rank selector — compact vertical list, muted purple theme ────────────── */
+/* ── Rank selector ────────────────────────────────────────────────────────── */
 .rank-selector {
   display: flex;
   flex-direction: column;
   gap: 3px;
 }
-
 .rank-label {
   font-size: 10px;
   font-weight: 600;
@@ -1060,7 +1277,6 @@
   letter-spacing: 0.3px;
   margin-bottom: 1px;
 }
-
 .rank-btn {
   display: block;
   width: 100%;
@@ -1070,6 +1286,7 @@
   border: 1px solid var(--rank-inactive-border);
   border-radius: 5px;
   font-size: 10px;
+  font-weight: 500;
   cursor: pointer;
   font-family: inherit;
   color: var(--rank-inactive-text);
@@ -1087,13 +1304,12 @@
   font-weight: 600;
 }
 
-/* ── Chart navigator — jump buttons in the utility panel ─────────────────── */
+/* ── Chart navigator ──────────────────────────────────────────────────────── */
 .chart-nav {
   display: flex;
   flex-direction: column;
   gap: 3px;
 }
-
 .chart-nav-label {
   font-size: 10px;
   font-weight: 600;
@@ -1102,152 +1318,25 @@
   letter-spacing: 0.3px;
   margin-bottom: 1px;
 }
-
 .chart-nav-btn {
   display: block;
   width: 100%;
   padding: 4px 8px;
   text-align: left;
-  background: #eef2f7;
-  border: 1px solid #c8d4e0;
+  background: var(--chart-nav-bg);
+  border: 1px solid var(--chart-nav-border);
   border-radius: 5px;
   font-size: 10px;
   font-weight: 500;
   cursor: pointer;
   font-family: inherit;
-  color: #3a5a78;
+  color: var(--chart-nav-text);
   transition:
     background 0.1s,
     border-color 0.1s;
 }
 .chart-nav-btn:hover {
-  background: #dce8f4;
-  border-color: #9ab6cf;
-  color: #1e3a56;
-}
-
-/* ── Analysis table: column emphasis ─────────────────────────────────────── */
-/* Symbol: dark navy, extra weight to anchor each row */
-.tx-table td.sym-col {
-  color: #1e3566;
-  font-weight: 800;
-  font-size: 12px;
-}
-
-/* All 5 rank-able columns: bold */
-.tx-table td.rank-col {
-  font-weight: 700;
-}
-
-/* Bought Balance: warm muted terracotta (matches Table tab theme) */
-.tx-table td.rank-bought {
-  color: var(--refresh-btn-em);
-}
-
-/* Current Value: cool muted slate (matches Analysis tab theme) */
-.tx-table td.rank-current {
-  color: var(--buy);
-}
-
-/* Bought % / Current % */
-.tx-table td.rank-pct {
-  font-size: 11px;
-}
-
-/* Analysis table: faint alternating row background */
-.analysis-table tbody tr:nth-child(even) {
-  background: rgba(0, 0, 0, 0.03);
-}
-
-/* Account tab: two-value right column */
-.tab-right-values {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 1px;
-}
-
-.tab-total-bought {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--neg);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  margin-left: auto;
-}
-
-.tab-total-current {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--buy);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-/* Sync Activities section (table sub-tab right panel) */
-.sync-section {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  flex-shrink: 0;
-}
-
-/* Analysis summary block (totalBought + totalCurrent) */
-.analysis-summary {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  padding: 8px 10px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  flex-shrink: 0;
-}
-
-.analysis-summary-item {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.analysis-summary-label {
-  font-size: 10px;
-  color: var(--text-muted);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-}
-
-.analysis-summary-value {
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-}
-/* Sub-tabs row: tabs + active symbol label */
-.sub-tabs-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  border-bottom: 2px solid var(--border);
-}
-
-.sub-tabs-row .sub-tabs {
-  border-bottom: none; /* border is on the row now */
-}
-
-.subtab-active-sym {
-  font-weight: 700;
-  font-size: 14px;
-  color: #000;
-  letter-spacing: 0.04em;
-  padding: 0 4px;
-  opacity: 0.9;
-}
-
-/* ── Scrollable content area (analysis table / charts) ───────────────────── */
-.content-scroll {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
+  background: var(--chart-nav-hover-bg);
+  border-color: var(--chart-nav-hover-border);
+  color: var(--chart-nav-hover-text);
 }

@@ -29,12 +29,15 @@ export const api = {
   // Sync flow: update accounts, then per-account activities, then full tx refresh
   updateAndGetAccounts: () => call("update_and_get_accounts"),
   updateActivitiesByAccount: (account_id) =>
-    call("update_activities_by_account", { account_id }),
+    call("update_activities_and_get_transactions_by_account", { account_id }),
 
-  // Lazy load: fetch all transactions for a nickname's active stocks on demand
-  // stocks: string[] of symbol names to fetch
+  // Lazy load: fetch all transactions for a nickname's recent active stocks (90-day + holding > 0)
   getTransactionsByNickname: (nickname) =>
     call("get_transactions_on_recent_active_stocks_by_nickname", { nickname }),
+
+  // Individual symbol load: fetch all transactions for one specific symbol (no activity filter)
+  getTransactionsBySymbol: (nickname, symbol) =>
+    call("get_all_transactions_by_symbol_by_nickname", { nickname, symbol }),
 
   // Per-symbol: returns updated stocks metadata + transactions for changed symbols
   refreshOrders: (account_id) =>

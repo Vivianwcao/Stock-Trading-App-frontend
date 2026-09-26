@@ -56,7 +56,6 @@ export const translations = {
     lastOrders: "Last orders sync",
     lastPositionsSync: "Last positions sync",
     calculate: "Calculate",
-    rowsUpdated: (n) => `${n} rows updated`,
     // analysis table headers
     symbol: "Symbol",
     costBasis: "Cost Basis",
@@ -156,7 +155,6 @@ export const translations = {
     lastOrders: "最后近24小时交易同步",
     lastPositionsSync: "最近持仓同步",
     calculate: "计算",
-    rowsUpdated: (n) => `${n} 行已更新`,
     // analysis table headers
     symbol: "股票",
     costBasis: "平均成本",

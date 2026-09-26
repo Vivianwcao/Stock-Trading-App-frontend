@@ -67,6 +67,10 @@
   --analysis-accent-em: #5c3d8a;
   --analysis-tab-bg: #694bc3; /* active analysis sub-tab fill        */
 
+  /* ── Analysis buttons ─────────────── */
+  --analysis-btn: #359863;
+  --analysis-btn-em: #1a7142; /* hover / emphasis                       */
+
   /* ── Table sub-tab background (warm terracotta) ──────────────────────── */
   --table-tab-bg: #bb6334; /* active table sub-tab fill           */
 
@@ -1242,9 +1246,12 @@ button {
   cursor: pointer;
   font-weight: 600;
   transition: opacity 0.15s;
+  background: var(--analysis-btn);
+  border: none;
 }
 .snapshot-load-btn:hover {
   opacity: 0.85;
+  background: var(--analysis-btn-em);
 }
 .snapshot-load-btn:disabled {
   opacity: 0.35;

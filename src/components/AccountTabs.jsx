@@ -226,7 +226,12 @@ export default function AccountTabs({
 
   // Transactions from local cache — only populated after loadTransactions or a successful update
   const cachedNickTxns = transactionCacheRef.current[activeNick] || {};
-  const rows = currentSym ? cachedNickTxns[currentSym] || [] : [];
+  const rows =
+    currentSym ?
+      [...(cachedNickTxns[currentSym] || [])].sort((a, b) =>
+        (a.trade_date || "").localeCompare(b.trade_date || ""),
+      )
+    : [];
   const lastRow = rows.length > 0 ? rows[rows.length - 1] : null;
   const currentHyp = currentSym ? (hypotheticals[currentSym] ?? null) : null;
 
@@ -472,13 +477,10 @@ export default function AccountTabs({
       return <span className="sync-msg syncing">{t.syncing}</span>;
     if (!syncStatus) return null;
     if (syncStatus.status === "success") {
-      const n = syncStatus.data?.rows_updated;
       const updatedStocks = syncStatus.data?.stocks || [];
       return (
         <>
-          <span className="sync-msg ok">
-            {n != null ? t.rowsUpdated(n) : t.syncSuccess}
-          </span>
+          <span className="sync-msg ok">{t.syncSuccess}</span>
           {updatedStocks.length > 0 && (
             <div className="updated-stocks">
               {updatedStocks.map((s) => (
@@ -516,13 +518,10 @@ export default function AccountTabs({
       return <span className="sync-msg syncing">{t.refreshing}</span>;
     if (!orderStatus) return null;
     if (orderStatus.status === "success") {
-      const n = orderStatus.data?.rows_updated;
       const updatedStocks = orderStatus.data?.stocks || [];
       return (
         <>
-          <span className="sync-msg ok">
-            {n != null ? t.rowsUpdated(n) : t.ordersSuccess}
-          </span>
+          <span className="sync-msg ok">{t.ordersSuccess}</span>
           {updatedStocks.length > 0 && (
             <div className="updated-stocks">
               {updatedStocks.map((s) => (
@@ -979,18 +978,6 @@ export default function AccountTabs({
               </button>
             </div>
 
-            {/* Load Analysis — above snapshot list */}
-            {viewMode === "snapshot" && (
-              <button
-                className="snapshot-load-btn"
-                onClick={handleAnalyze}
-                disabled={selectedSnapshots.size === 0 || comparisonLoading}>
-                {comparisonLoading ?
-                  (t.loading ?? "Loading…")
-                : (t.loadSnapshot ?? "Load Analysis")}
-              </button>
-            )}
-
             {/* Chart nav */}
             {showCharts && (
               <div className="chart-nav">
@@ -1028,6 +1015,18 @@ export default function AccountTabs({
                   </button>
                 ))}
               </div>
+            )}
+
+            {/* Load Analysis — above snapshot list */}
+            {viewMode === "snapshot" && (
+              <button
+                className="snapshot-load-btn"
+                onClick={handleAnalyze}
+                disabled={selectedSnapshots.size === 0 || comparisonLoading}>
+                {comparisonLoading ?
+                  (t.loading ?? "Loading…")
+                : (t.loadSnapshot ?? "Load Analysis")}
+              </button>
             )}
 
             {/* Snapshot selector */}

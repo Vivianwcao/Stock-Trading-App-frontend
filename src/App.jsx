@@ -14,6 +14,7 @@ function getStoredPassword() {
 
 export default function App() {
   const [lang, setLang] = useState("en");
+  const [gateKey, setGateKey] = useState(0);
   const t = translations[lang];
 
   // authenticated: true only after a successful loadPageData().
@@ -71,6 +72,7 @@ export default function App() {
       clearPassword();
       if (e.unauthorized) {
         // 401: wrong password — clear stored password, show backend's message
+        setGateKey((k) => k + 1);
         try {
           sessionStorage.removeItem("app_pw");
         } catch {}
@@ -150,6 +152,7 @@ export default function App() {
   if (!authenticated) {
     return (
       <PasswordGate
+        key={gateKey}
         authError={authError}
         loading={gateLoading}
         onUnlock={handleUnlock}

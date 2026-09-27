@@ -79,4 +79,8 @@ export const api = {
       account_id,
       sync_dates,
     }),
+
+  // Snapshot list: fetch all snapshot dates for one account
+  getSnapshotDatesByAccount: (account_id) =>
+    call("get_snapshot_dates_by_account", { account_id }),
 };

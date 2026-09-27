@@ -58,6 +58,7 @@ export default function AccountTabs({
   // Per-account sync state
   const [syncing, setSyncing] = useState(false);
   const [syncStatus, setSyncStatus] = useState(null);
+  const [snapshotsRefreshing, setSnapshotsRefreshing] = useState(false);
 
   // Snapshot comparison state
   const [selectedSnapshots, setSelectedSnapshots] = useState(new Set());
@@ -376,6 +377,25 @@ export default function AccountTabs({
     }
   };
 
+  const refreshSnapshots = async () => {
+    if (!activeAccount?.id) return;
+    setSnapshotsRefreshing(true);
+    try {
+      const res = await api.getSnapshotDatesByAccount(activeAccount.id);
+      if (res.status === "success") {
+        const snaps = (res.data || []).map((s) => ({
+          ...s,
+          account_id: activeAccount.id,
+        }));
+        onMergeSnapshots(activeAccount.id, snaps);
+      }
+    } catch (_) {
+      // silent — snapshot list just stays stale
+    } finally {
+      setSnapshotsRefreshing(false);
+    }
+  };
+
   const refreshPositions = async () => {
     if (!activeAccount?.id) return;
     setPositionsRefreshing(true);
@@ -388,7 +408,7 @@ export default function AccountTabs({
           sync_dates: freshSnapshots = [],
         } = res.data || {};
         onMergeAnalysis(activeAccount.id, freshAnalysis);
-        onMergeSnapshots(activeAccount.id, freshSnapshots);
+        await refreshSnapshots();
       }
     } catch (e) {
       setPositionStatus({ status: "fail", error: e.message });
@@ -739,11 +759,14 @@ export default function AccountTabs({
                     disabled={syncing || !txnsLoaded}>
                     {syncing ? t.syncing : t.syncActivities}
                   </button>
-                  {actLastFetched && !syncing && (
-                    <span className="bar-last-fetch">
-                      {fmtVancouver(actLastFetched)}
-                    </span>
-                  )}
+                  <span
+                    className="bar-last-fetch"
+                    style={{
+                      visibility:
+                        actLastFetched && !syncing ? "visible" : "hidden",
+                    }}>
+                    {actLastFetched ? fmtVancouver(actLastFetched) : " "}
+                  </span>
                 </div>
                 <div className="bar-action-group">
                   <button
@@ -752,11 +775,14 @@ export default function AccountTabs({
                     disabled={refreshing || !txnsLoaded}>
                     {refreshing ? t.refreshing : t.refreshOrders}
                   </button>
-                  {ordLastFetched && !refreshing && (
-                    <span className="bar-last-fetch">
-                      {fmtVancouver(ordLastFetched)}
-                    </span>
-                  )}
+                  <span
+                    className="bar-last-fetch"
+                    style={{
+                      visibility:
+                        ordLastFetched && !refreshing ? "visible" : "hidden",
+                    }}>
+                    {ordLastFetched ? fmtVancouver(ordLastFetched) : " "}
+                  </span>
                 </div>
               </>
             : <div className="bar-action-group">
@@ -766,11 +792,16 @@ export default function AccountTabs({
                   disabled={positionsRefreshing}>
                   {positionsRefreshing ? t.refreshing : t.refreshPositions}
                 </button>
-                {positionsLastSync && !positionsRefreshing && (
-                  <span className="bar-last-fetch">
-                    {fmtVancouver(positionsLastSync)}
-                  </span>
-                )}
+                <span
+                  className="bar-last-fetch"
+                  style={{
+                    visibility:
+                      positionsLastSync && !positionsRefreshing ? "visible" : (
+                        "hidden"
+                      ),
+                  }}>
+                  {positionsLastSync ? fmtVancouver(positionsLastSync) : " "}
+                </span>
               </div>
             }
           </div>
@@ -994,11 +1025,13 @@ export default function AccountTabs({
                   onClick={() => scrollToChart("chart-allocation")}>
                   {t.navChartAllocation ?? "② Allocation"}
                 </button>
-                <button
-                  className="chart-nav-btn"
-                  onClick={() => scrollToChart("chart-value")}>
-                  {t.navChartValue ?? "③ Position Value"}
-                </button>
+                {!(viewMode === "snapshot" && selectedSnapshots.size > 1) && (
+                  <button
+                    className="chart-nav-btn"
+                    onClick={() => scrollToChart("chart-value")}>
+                    {t.navChartValue ?? "③ Position Value"}
+                  </button>
+                )}
               </div>
             )}
 
@@ -1038,6 +1071,13 @@ export default function AccountTabs({
                     {selectedSnapshots.size > 0 &&
                       ` (${selectedSnapshots.size})`}
                   </span>
+                  <button
+                    className="snapshot-refresh-btn"
+                    onClick={refreshSnapshots}
+                    disabled={snapshotsRefreshing}
+                    title={t.refresh ?? "Refresh"}>
+                    ↻
+                  </button>
                   <div className="snapshot-trigger-toggle">
                     <button
                       className={`trigger-btn ${!showAllTriggers ? "active" : ""}`}

@@ -116,10 +116,20 @@ export default function App() {
 
   // Replace snapshot rows for one account_id (used after refreshPositions)
   const mergeSnapshotsByAccountId = (accountId, freshSnapshots) => {
-    setSnapshots((prev) => [
-      ...prev.filter((r) => r.account_id !== accountId),
-      ...freshSnapshots,
-    ]);
+    if (!freshSnapshots?.length) return; // don't wipe if nothing to replace with
+    setSnapshots((prev) => {
+      const freshKeys = new Set(
+        freshSnapshots.map((s) => s.last_successful_sync),
+      );
+      return [
+        ...prev.filter(
+          (r) =>
+            r.account_id !== accountId ||
+            !freshKeys.has(r.last_successful_sync),
+        ),
+        ...freshSnapshots,
+      ];
+    });
   };
 
   // Update a single last_fetched entry in state

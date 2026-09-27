@@ -1135,8 +1135,31 @@ button {
 .snapshot-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 6px;
+}
+.snapshot-refresh-btn {
+  margin-left: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 14px;
+  padding: 1px 3px;
+  border-radius: 4px;
+  line-height: 1;
+  font-family: inherit;
+  flex-shrink: 0;
+  transition:
+    color 0.15s,
+    background 0.15s;
+}
+.snapshot-refresh-btn:hover:not(:disabled) {
+  color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+}
+.snapshot-refresh-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 .snapshot-label {
   font-size: 10px;

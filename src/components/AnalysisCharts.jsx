@@ -46,6 +46,14 @@ function buildColorMap(symbols) {
   return map;
 }
 
+// Darken a hex color by multiplying RGB channels (amount < 1 = darker)
+function darkenHex(hex, amount = 0.72) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgb(${Math.round(r * amount)}, ${Math.round(g * amount)}, ${Math.round(b * amount)})`;
+}
+
 function sortByAvg(symbols, data, col) {
   return [...symbols].sort((a, b) => {
     const avg = (sym) => {
@@ -59,6 +67,12 @@ function sortByAvg(symbols, data, col) {
 
 const fmtPct = (v) => (v != null ? `${v.toFixed(2)}%` : "—");
 const fmtCur = (v) => (v != null ? fmtCAD(v) : "—");
+const fmtShort = (v) => {
+  if (v == null) return "";
+  if (Math.abs(v) >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
+  if (Math.abs(v) >= 1_000) return `$${(v / 1_000).toFixed(1)}K`;
+  return `$${v.toFixed(0)}`;
+};
 
 // Chart height: fill the viewport minus the account tabs / sub-tabs overhead.
 // Adjust the offset (currently 90) if charts feel too tall or too short on your screen.
@@ -76,7 +90,7 @@ const TT = {
     border: "1px solid #ccc",
     borderRadius: 4,
     padding: "5px 8px",
-    fontSize: 10,
+    fontSize: 12,
     lineHeight: 1.6,
     maxWidth: 280,
   },
@@ -218,45 +232,100 @@ function GrowthChart({ data, t }) {
     return entry;
   });
 
-  const chartH = getChartH();
+  const chartH = Math.max(600, symbols.length * 75 + 100);
   // Min width: 80px per date keeps labels readable; fills container if fewer dates
   const minW = Math.max(400, chartData.length * 80);
+  // Darkened colors for lines — more visible against the light grid background
+  const darkColorMap = Object.fromEntries(
+    symbols.map((sym) => [sym, darkenHex(colorMap[sym])]),
+  );
 
   return (
     <div id="chart-growth" className="chart-section">
       <h3 className="chart-title">{t.chartGrowth ?? "Growth %"}</h3>
-      <div className="chart-scroll-x">
+      <div
+        className="chart-scroll-x"
+        style={{ maxHeight: "calc(100vh - 120px)", overflowY: "auto" }}>
         <div style={{ minWidth: minW, height: chartH }}>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
               data={chartData}
-              margin={{ top: 8, right: 24, left: 8, bottom: 40 }}>
+              margin={{
+                top: 8,
+                right: 60,
+                left: chartData.length <= 2 ? 50 : 8,
+                bottom: 40,
+              }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
               <XAxis
                 dataKey="date"
-                tick={{ fontSize: 11 }}
+                tick={{ fontSize: 11, fontWeight: 700 }}
                 angle={-35}
                 textAnchor="end"
                 interval={0}
               />
               <YAxis
                 tickFormatter={(v) => `${v}%`}
-                tick={{ fontSize: 11 }}
+                tick={{ fontSize: 11, fontWeight: 700 }}
                 width={48}
+                tickCount={6}
+                domain={[
+                  (dataMin) => Math.floor((dataMin - 5) / 5) * 5,
+                  (dataMax) => Math.ceil((dataMax + 5) / 5) * 5,
+                ]}
               />
               <Tooltip isAnimationActive={false} content={<GrowthTooltip />} />
-              <Legend wrapperStyle={{ fontSize: 10, paddingTop: 2 }} />
+              <Legend
+                wrapperStyle={{ fontSize: 10, paddingTop: 2, fontWeight: 700 }}
+              />
               {symbols.map((sym) => (
                 <Line
                   key={sym}
                   type="monotone"
                   dataKey={sym}
-                  stroke={colorMap[sym]}
+                  stroke={darkColorMap[sym]}
                   strokeWidth={2}
-                  dot={false}
+                  dot={(props) => {
+                    const { cx, cy, index } = props;
+                    const showDot =
+                      chartData.length <= 2 &&
+                      (index === 0 || index === chartData.length - 1);
+                    if (!showDot) return <circle key={index} r={0} />;
+                    return (
+                      <circle
+                        key={index}
+                        cx={cx}
+                        cy={cy}
+                        r={3}
+                        fill={darkColorMap[sym]}
+                        strokeWidth={0}
+                      />
+                    );
+                  }}
                   connectNulls
-                  name={sym}
-                />
+                  name={sym}>
+                  <LabelList
+                    dataKey={sym}
+                    content={({ x, y, index, value }) => {
+                      if (value == null) return null;
+                      const isLast = index === chartData.length - 1;
+                      const isFirst = index === 0 && chartData.length <= 2;
+                      if (!isLast && !isFirst) return null;
+                      return (
+                        <text
+                          x={isFirst ? x - 6 : x + 6}
+                          y={y}
+                          fontSize={9}
+                          fill={darkColorMap[sym]}
+                          dominantBaseline="middle"
+                          fontWeight={700}
+                          textAnchor={isFirst ? "end" : "start"}>
+                          {`${sym}: ${fmtPct(value)}`}
+                        </text>
+                      );
+                    }}
+                  />
+                </Line>
               ))}
             </LineChart>
           </ResponsiveContainer>
@@ -316,14 +385,14 @@ function AllocationChart({ data, t }) {
               <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
               <XAxis
                 dataKey="date"
-                tick={{ fontSize: 11 }}
+                tick={{ fontSize: 11, fontWeight: 700 }}
                 angle={-35}
                 textAnchor="end"
                 interval={0}
               />
               <YAxis
                 tickFormatter={(v) => `${v}%`}
-                tick={{ fontSize: 11 }}
+                tick={{ fontSize: 11, fontWeight: 700 }}
                 width={48}
                 domain={[0, 100]}
               />
@@ -331,13 +400,15 @@ function AllocationChart({ data, t }) {
                 isAnimationActive={false}
                 content={<AllocationTooltip />}
               />
-              <Legend wrapperStyle={{ fontSize: 10, paddingTop: 2 }} />
+              <Legend
+                wrapperStyle={{ fontSize: 10, paddingTop: 2, fontWeight: 700 }}
+              />
               {[...symbols].reverse().map((sym) => (
                 <Fragment key={sym}>
                   <Bar
                     dataKey={`${sym}_c`}
                     stackId="cost"
-                    fill={colorMap[sym]}
+                    fill={darkenHex(colorMap[sym])}
                     name={sym}>
                     <LabelList
                       dataKey={`${sym}_c`}
@@ -407,7 +478,7 @@ function ValueChart({ data, t }) {
 
   const costLabel = t.positionCost ?? "Position Cost";
   const valueLabel = t.currentBalance ?? "Current Value";
-  const chartH = getChartH();
+  let chartH = getChartH();
 
   if (!isMulti) {
     // Single snapshot: grouped bars, X = symbol, sorted by current_value desc
@@ -443,22 +514,67 @@ function ValueChart({ data, t }) {
               <BarChart
                 data={chartData}
                 barCategoryGap="22%"
-                margin={{ top: 8, right: 24, left: 8, bottom: 16 }}>
+                margin={{ top: 20, right: 24, left: 8, bottom: 16 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                <XAxis dataKey="symbol" tick={{ fontSize: 11 }} />
+                <XAxis
+                  dataKey="symbol"
+                  tick={{ fontSize: 11, fontWeight: 700 }}
+                />
                 <YAxis
                   tickFormatter={(v) => fmtCAD(v)}
-                  tick={{ fontSize: 11 }}
+                  tick={{ fontSize: 11, fontWeight: 700 }}
                   width={76}
                 />
                 <Tooltip
                   isAnimationActive={false}
                   content={<ValueBarTooltip />}
                 />
-                <Legend wrapperStyle={{ fontSize: 10, paddingTop: 2 }} />
+                <Legend
+                  wrapperStyle={{
+                    fontSize: 10,
+                    paddingTop: 2,
+                    fontWeight: 700,
+                  }}
+                />
                 {/* barSize=14: narrow enough that 35% category gap clearly separates groups */}
-                <Bar dataKey={costLabel} fill="#e15759" barSize={14} />
-                <Bar dataKey={valueLabel} fill="#59a14f" barSize={14} />
+                <Bar dataKey={costLabel} fill="#b8c8d2" barSize={14}>
+                  <LabelList
+                    dataKey={costLabel}
+                    content={({ x, y, width, value }) => {
+                      if (!value) return null;
+                      return (
+                        <text
+                          x={x + width / 2}
+                          y={y - 4}
+                          textAnchor="middle"
+                          fontSize={8}
+                          fill="#555"
+                          fontWeight={600}>
+                          {fmtShort(value)}
+                        </text>
+                      );
+                    }}
+                  />
+                </Bar>
+                <Bar dataKey={valueLabel} fill="#4e7aaa" barSize={14}>
+                  <LabelList
+                    dataKey={valueLabel}
+                    content={({ x, y, width, value }) => {
+                      if (!value) return null;
+                      return (
+                        <text
+                          x={x + width / 2}
+                          y={y - 4}
+                          textAnchor="middle"
+                          fontSize={8}
+                          fill="#555"
+                          fontWeight={600}>
+                          {fmtShort(value)}
+                        </text>
+                      );
+                    }}
+                  />
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -482,6 +598,7 @@ function ValueChart({ data, t }) {
   });
 
   const minW = Math.max(400, chartData.length * 80);
+  chartH = Math.max(600, symbols.length * 75 + 100);
 
   return (
     <div id="chart-value" className="chart-section">
@@ -492,12 +609,14 @@ function ValueChart({ data, t }) {
           {t.chartValueSubtitle ?? "— solid: Current Value, dashed: Cost"}
         </span>
       </h3>
-      <div className="chart-scroll-x">
+      <div
+        className="chart-scroll-x"
+        style={{ maxHeight: "calc(100vh - 120px)", overflowY: "auto" }}>
         <div style={{ minWidth: minW, height: chartH }}>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
               data={chartData}
-              margin={{ top: 8, right: 24, left: 8, bottom: 40 }}>
+              margin={{ top: 8, right: 60, left: 8, bottom: 40 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
               <XAxis
                 dataKey="date"
@@ -525,8 +644,26 @@ function ValueChart({ data, t }) {
                     strokeWidth={2}
                     dot={false}
                     connectNulls
-                    name={sym}
-                  />
+                    name={sym}>
+                    <LabelList
+                      dataKey={`${sym}_v`}
+                      content={({ x, y, index, value }) => {
+                        if (index !== chartData.length - 1 || value == null)
+                          return null;
+                        return (
+                          <text
+                            x={x + 6}
+                            y={y}
+                            fontSize={9}
+                            fill={colorMap[sym]}
+                            dominantBaseline="middle"
+                            fontWeight={700}>
+                            {sym}
+                          </text>
+                        );
+                      }}
+                    />
+                  </Line>
                   <Line
                     type="monotone"
                     dataKey={`${sym}_c`}
@@ -536,8 +673,27 @@ function ValueChart({ data, t }) {
                     dot={false}
                     connectNulls
                     legendType="none"
-                    name={`${sym} cost`}
-                  />
+                    name={`${sym} cost`}>
+                    <LabelList
+                      dataKey={`${sym}_c`}
+                      content={({ x, y, index, value }) => {
+                        if (index !== chartData.length - 1 || value == null)
+                          return null;
+                        return (
+                          <text
+                            x={x + 6}
+                            y={y + 12}
+                            fontSize={9}
+                            fill={colorMap[sym]}
+                            dominantBaseline="middle"
+                            fontWeight={400}
+                            opacity={0.7}>
+                            {sym}(c)
+                          </text>
+                        );
+                      }}
+                    />
+                  </Line>
                 </Fragment>
               ))}
             </LineChart>
@@ -553,11 +709,12 @@ export default function AnalysisCharts({ t, data }) {
   if (!data || data.length === 0) {
     return <div className="status-msg">{t.noPositions}</div>;
   }
+  const isMulti = new Set(data.map((r) => r.last_successful_sync)).size > 1;
   return (
     <div className="analysis-charts">
       <GrowthChart data={data} t={t} />
       <AllocationChart data={data} t={t} />
-      <ValueChart data={data} t={t} />
+      {!isMulti && <ValueChart data={data} t={t} />}
     </div>
   );
 }

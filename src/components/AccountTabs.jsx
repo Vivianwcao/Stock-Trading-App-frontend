@@ -230,7 +230,7 @@ export default function AccountTabs({
   const rows =
     currentSym ?
       [...(cachedNickTxns[currentSym] || [])].sort((a, b) =>
-        (a.trade_date || "").localeCompare(b.trade_date || ""),
+        (b.trade_date || "").localeCompare(a.trade_date || ""),
       )
     : [];
   const lastRow = rows.length > 0 ? rows[rows.length - 1] : null;
